@@ -1,0 +1,38 @@
+@ToDoApi_HostAddress = http://localhost:5128
+@todo_id = 00000000-0000-0000-0000-000000000000
+
+### Get All ToDos
+GET {{ToDoApi_HostAddress}}/api/todo
+Accept: application/json
+
+### Get ToDo by Id
+GET {{ToDoApi_HostAddress}}/api/todo/{{todo_id}}
+Accept: application/json
+
+### Create ToDo
+POST {{ToDoApi_HostAddress}}/api/todo
+Content-Type: application/json
+
+{
+  "title": "Buy groceries",
+  "description": "Milk, Bread, Cheese"
+}
+
+### Update ToDo
+PUT {{ToDoApi_HostAddress}}/api/todo/{{todo_id}}
+Content-Type: application/json
+
+{
+  "id": "{{todo_id}}",
+  "title": "Buy groceries",
+  "description": "Milk, Bread, Cheese, Eggs"
+}
+
+### Change ToDo Status
+PATCH {{ToDoApi_HostAddress}}/api/todo/{{todo_id}}/status
+Content-Type: application/json
+
+true
+
+### Delete ToDo
+DELETE {{ToDoApi_HostAddress}}/api/todo/{{todo_id}}

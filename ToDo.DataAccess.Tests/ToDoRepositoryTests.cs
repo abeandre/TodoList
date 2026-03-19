@@ -1,0 +1,153 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Xunit;
+using ToDo.DataAccess;
+using ToDo.DataAccess.Repositories;
+
+namespace ToDo.DataAccess.Tests
+{
+    public class ToDoRepositoryTests
+    {
+        private AppDbContext GetInMemoryDbContext()
+        {
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options;
+
+            return new AppDbContext(options);
+        }
+
+        [Fact]
+        public async Task AddAsync_ShouldAddToDo()
+        {
+            // Arrange
+            var context = GetInMemoryDbContext();
+            var repository = new ToDoRepository(context);
+            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Test Add", Description = "Testing Add" };
+
+            // Act
+            await repository.AddAsync(todo);
+
+            // Assert
+            var result = await context.ToDos.FindAsync(todo.Id);
+            Assert.NotNull(result);
+            Assert.Equal("Test Add", result!.Title);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_ShouldReturnCorrectToDo()
+        {
+            // Arrange
+            var context = GetInMemoryDbContext();
+            var repository = new ToDoRepository(context);
+            var id = Guid.NewGuid();
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Test Get" });
+            await context.SaveChangesAsync();
+
+            // Act
+            var result = await repository.GetByIdAsync(id);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(id, result.Id);
+            Assert.Equal("Test Get", result.Title);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_ShouldReturnAllToDos()
+        {
+            // Arrange
+            var context = GetInMemoryDbContext();
+            var repository = new ToDoRepository(context);
+            context.ToDos.AddRange(
+                new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Task 1" },
+                new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Task 2" }
+            );
+            await context.SaveChangesAsync();
+
+            // Act
+            var result = await repository.GetAllAsync();
+
+            // Assert
+            Assert.Equal(2, result.Count());
+        }
+
+        [Fact]
+        public async Task UpdateAsync_ShouldUpdateToDo()
+        {
+            // Arrange
+            var context = GetInMemoryDbContext();
+            var repository = new ToDoRepository(context);
+            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Old Title" };
+            context.ToDos.Add(todo);
+            await context.SaveChangesAsync();
+
+            // Act
+            todo.Title = "New Title";
+            await repository.UpdateAsync(todo);
+
+            // Assert
+            var result = await context.ToDos.FindAsync(todo.Id);
+            Assert.NotNull(result);
+            Assert.Equal("New Title", result!.Title);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ShouldRemoveToDo()
+        {
+            // Arrange
+            var context = GetInMemoryDbContext();
+            var repository = new ToDoRepository(context);
+            var id = Guid.NewGuid();
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "To Delete" });
+            await context.SaveChangesAsync();
+
+            // Act
+            await repository.DeleteAsync(id);
+
+            // Assert
+            var result = await context.ToDos.FindAsync(id);
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task ChangeStatusAsync_ShouldSetFinishedAtWhenCompleted()
+        {
+            // Arrange
+            var context = GetInMemoryDbContext();
+            var repository = new ToDoRepository(context);
+            var id = Guid.NewGuid();
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Status Test" });
+            await context.SaveChangesAsync();
+
+            // Act
+            await repository.ChangeStatusAsync(id, true);
+
+            // Assert
+            var result = await context.ToDos.FindAsync(id);
+            Assert.NotNull(result);
+            Assert.NotNull(result.FinishedAt);
+        }
+
+        [Fact]
+        public async Task ChangeStatusAsync_ShouldNullifyFinishedAtWhenNotCompleted()
+        {
+            // Arrange
+            var context = GetInMemoryDbContext();
+            var repository = new ToDoRepository(context);
+            var id = Guid.NewGuid();
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Status Test 2", FinishedAt = DateTime.Now });
+            await context.SaveChangesAsync();
+
+            // Act
+            await repository.ChangeStatusAsync(id, false);
+
+            // Assert
+            var result = await context.ToDos.FindAsync(id);
+            Assert.NotNull(result);
+            Assert.Null(result.FinishedAt);
+        }
+    }
+}
