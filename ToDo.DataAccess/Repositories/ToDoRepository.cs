@@ -15,7 +15,7 @@ namespace ToDo.DataAccess.Repositories
             _context = context;
         }
 
-        public async Task<DataAccess.ToDo> GetByIdAsync(Guid id)
+        public async Task<DataAccess.ToDo?> GetByIdAsync(Guid id)
         {
             return await _context.ToDos.FindAsync(id);
         }
@@ -37,24 +37,26 @@ namespace ToDo.DataAccess.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteAsync(Guid id)
+        public async Task<bool> DeleteAsync(Guid id)
         {
             var todo = await GetByIdAsync(id);
-            if (todo != null)
-            {
-                _context.ToDos.Remove(todo);
-                await _context.SaveChangesAsync();
-            }
+            if (todo == null)
+                return false;
+
+            _context.ToDos.Remove(todo);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
-        public async Task ChangeStatusAsync(Guid id, bool isCompleted)
+        public async Task<bool> ChangeStatusAsync(Guid id, bool isCompleted)
         {
             var todo = await GetByIdAsync(id);
-            if (todo != null)
-            {
-                todo.FinishedAt = isCompleted ? DateTime.Now : null;
-                await _context.SaveChangesAsync();
-            }
+            if (todo == null)
+                return false;
+
+            todo.FinishedAt = isCompleted ? DateTime.UtcNow : null;
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

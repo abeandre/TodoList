@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ToDoApi.Controllers;
+using ToDoApi.Models;
 using ToDo.DataAccess.Repositories;
 using Xunit;
 
@@ -36,7 +38,7 @@ namespace ToDoApi.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedTodos = Assert.IsAssignableFrom<IEnumerable<ToDo.DataAccess.ToDo>>(okResult.Value);
+            var returnedTodos = Assert.IsAssignableFrom<IEnumerable<ToDoResponse>>(okResult.Value);
             Assert.Equal(2, returnedTodos.Count());
         }
 
@@ -53,7 +55,7 @@ namespace ToDoApi.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedTodo = Assert.IsType<ToDo.DataAccess.ToDo>(okResult.Value);
+            var returnedTodo = Assert.IsType<ToDoResponse>(okResult.Value);
             Assert.Equal(todoId, returnedTodo.Id);
         }
 
@@ -61,7 +63,7 @@ namespace ToDoApi.Tests.Controllers
         public async Task GetByIdReturnsNotFoundResultWhenTodoDoesNotExist()
         {
             // Arrange
-            _mockRepo.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ToDo.DataAccess.ToDo)null);
+            _mockRepo.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ToDo.DataAccess.ToDo?)null);
 
             // Act
             var result = await _controller.GetById(Guid.NewGuid());
@@ -74,78 +76,106 @@ namespace ToDoApi.Tests.Controllers
         public async Task CreateReturnsCreatedAtActionResultAndSetsDates()
         {
             // Arrange
-            var newTodo = new ToDo.DataAccess.ToDo { Title = "Add Me" };
+            var request = new CreateToDoRequest { Title = "Add Me" };
             _mockRepo.Setup(repo => repo.AddAsync(It.IsAny<ToDo.DataAccess.ToDo>())).Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.Create(newTodo);
+            var result = await _controller.Create(request);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+            var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
             Assert.Equal(nameof(ToDoController.GetById), createdResult.ActionName);
-            var returnedTodo = Assert.IsType<ToDo.DataAccess.ToDo>(createdResult.Value);
+            var returnedTodo = Assert.IsType<ToDoResponse>(createdResult.Value);
             Assert.NotEqual(Guid.Empty, returnedTodo.Id);
             Assert.NotEqual(default(DateTime), returnedTodo.CreatedAt);
         }
 
         [Fact]
-        public async Task UpdateReturnsBadRequestWhenIdMismatch()
+        public async Task UpdateReturnsNotFoundWhenTodoDoesNotExist()
         {
             // Arrange
-            var todo = new ToDo.DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Updated" };
-            var differentId = Guid.NewGuid();
+            _mockRepo.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ToDo.DataAccess.ToDo?)null);
+            var request = new UpdateToDoRequest { Title = "Updated" };
 
             // Act
-            var result = await _controller.Update(differentId, todo);
+            var result = await _controller.Update(Guid.NewGuid(), request);
 
             // Assert
-            Assert.IsType<BadRequestResult>(result);
+            Assert.IsType<NotFoundResult>(result);
         }
 
         [Fact]
-        public async Task UpdateReturnsOkResultWhenValid()
+        public async Task UpdateReturnsNoContentWhenValid()
         {
             // Arrange
             var todoId = Guid.NewGuid();
-            var todo = new ToDo.DataAccess.ToDo { Id = todoId, Title = "Updated" };
+            var existing = new ToDo.DataAccess.ToDo { Id = todoId, Title = "Old Title" };
+            var request = new UpdateToDoRequest { Title = "Updated" };
+            _mockRepo.Setup(repo => repo.GetByIdAsync(todoId)).ReturnsAsync(existing);
             _mockRepo.Setup(repo => repo.UpdateAsync(It.IsAny<ToDo.DataAccess.ToDo>())).Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.Update(todoId, todo);
+            var result = await _controller.Update(todoId, request);
 
             // Assert
-            Assert.IsType<OkResult>(result);
-            _mockRepo.Verify(repo => repo.UpdateAsync(todo), Times.Once);
+            Assert.IsType<NoContentResult>(result);
+            _mockRepo.Verify(repo => repo.UpdateAsync(existing), Times.Once);
         }
 
         [Fact]
-        public async Task DeleteReturnsOkResult()
+        public async Task DeleteReturnsNoContentWhenFound()
         {
             // Arrange
             var todoId = Guid.NewGuid();
-            _mockRepo.Setup(repo => repo.DeleteAsync(todoId)).Returns(Task.CompletedTask);
+            _mockRepo.Setup(repo => repo.DeleteAsync(todoId)).ReturnsAsync(true);
 
             // Act
             var result = await _controller.Delete(todoId);
 
             // Assert
-            Assert.IsType<OkResult>(result);
+            Assert.IsType<NoContentResult>(result);
             _mockRepo.Verify(repo => repo.DeleteAsync(todoId), Times.Once);
         }
 
         [Fact]
-        public async Task ChangeStatusReturnsOkResult()
+        public async Task DeleteReturnsNotFoundWhenTodoDoesNotExist()
+        {
+            // Arrange
+            _mockRepo.Setup(repo => repo.DeleteAsync(It.IsAny<Guid>())).ReturnsAsync(false);
+
+            // Act
+            var result = await _controller.Delete(Guid.NewGuid());
+
+            // Assert
+            Assert.IsType<NotFoundResult>(result);
+        }
+
+        [Fact]
+        public async Task ChangeStatusReturnsNoContentWhenFound()
         {
             // Arrange
             var todoId = Guid.NewGuid();
-            _mockRepo.Setup(repo => repo.ChangeStatusAsync(todoId, true)).Returns(Task.CompletedTask);
+            _mockRepo.Setup(repo => repo.ChangeStatusAsync(todoId, true)).ReturnsAsync(true);
 
             // Act
             var result = await _controller.ChangeStatus(todoId, true);
 
             // Assert
-            Assert.IsType<OkResult>(result);
+            Assert.IsType<NoContentResult>(result);
             _mockRepo.Verify(repo => repo.ChangeStatusAsync(todoId, true), Times.Once);
+        }
+
+        [Fact]
+        public async Task ChangeStatusReturnsNotFoundWhenTodoDoesNotExist()
+        {
+            // Arrange
+            _mockRepo.Setup(repo => repo.ChangeStatusAsync(It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(false);
+
+            // Act
+            var result = await _controller.ChangeStatus(Guid.NewGuid(), true);
+
+            // Assert
+            Assert.IsType<NotFoundResult>(result);
         }
     }
 }

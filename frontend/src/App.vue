@@ -17,8 +17,8 @@ const fetchToDos = async () => {
   error.value = null;
   try {
     todos.value = await todoService.getAll();
-  } catch (err: any) {
-    error.value = err.message || 'Failed to load ToDos';
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Could not load tasks — try refreshing the page.';
   } finally {
     loading.value = false;
   }
@@ -33,7 +33,7 @@ const sortedToDos = computed(() => {
     // Show active items first
     const aCompleted = !!a.finishedAt;
     const bCompleted = !!b.finishedAt;
-    
+
     if (aCompleted !== bCompleted) {
       return aCompleted ? 1 : -1;
     }
@@ -42,35 +42,42 @@ const sortedToDos = computed(() => {
   });
 });
 
+const remainingCount = computed(() => todos.value.filter(t => !t.finishedAt).length);
+
 const handleSave = async (data: { title: string; description: string }) => {
   try {
     if (editingTodo.value) {
-      await todoService.update(editingTodo.value.id, { id: editingTodo.value.id, ...data });
+      await todoService.update(editingTodo.value.id, data);
+      const todo = todos.value.find(t => t.id === editingTodo.value!.id);
+      if (todo) {
+        todo.title = data.title;
+        todo.description = data.description;
+      }
     } else {
-      await todoService.create(data);
+      const created = await todoService.create(data);
+      todos.value.push(created);
     }
-    await fetchToDos();
     showForm.value = false;
     editingTodo.value = undefined;
-  } catch (err: any) {
-    error.value = err.message || 'Failed to save ToDo';
+  } catch (err) {
+    error.value = err instanceof Error
+      ? err.message
+      : editingTodo.value
+        ? 'Could not save changes — please try again.'
+        : 'Could not create the task — please try again.';
   }
 };
 
 const handleToggleStatus = async (id: string, isCompleted: boolean) => {
+  const todo = todos.value.find(t => t.id === id);
+  if (!todo) return;
+  const originalFinishedAt = todo.finishedAt;
+  todo.finishedAt = isCompleted ? new Date().toISOString() : null;
   try {
-    // Optimistic UI update
-    const todo = todos.value.find(t => t.id === id);
-    if (todo) todo.finishedAt = isCompleted ? new Date().toISOString() : null;
-    
     await todoService.changeStatus(id, isCompleted);
-    // Fetch fresh to get accurate dates if needed
-    // await fetchToDos();
-  } catch (err: any) {
-    // Revert on failure
-    const todo = todos.value.find(t => t.id === id);
-    if (todo) todo.finishedAt = !isCompleted ? new Date().toISOString() : null;
-    error.value = err.message || 'Failed to update status';
+  } catch (err) {
+    todo.finishedAt = originalFinishedAt;
+    error.value = err instanceof Error ? err.message : 'Could not update task status — please try again.';
   }
 };
 
@@ -78,8 +85,8 @@ const handleDelete = async (id: string) => {
   try {
     await todoService.delete(id);
     todos.value = todos.value.filter(t => t.id !== id);
-  } catch (err: any) {
-    error.value = err.message || 'Failed to delete ToDo';
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Could not delete the task — please try again.';
   }
 };
 
@@ -99,7 +106,7 @@ const cancelEdit = () => {
     <header class="app-header">
       <div class="header-titles">
         <h1>My Tasks</h1>
-        <p class="subtitle">{{ todos.filter(t => !t.finishedAt).length }} remaining</p>
+        <p class="subtitle">{{ remainingCount }} remaining</p>
       </div>
       <button v-if="!showForm" class="btn btn-primary new-task-btn" @click="showForm = true">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -113,11 +120,11 @@ const cancelEdit = () => {
     </div>
 
     <Transition name="slide-fade">
-      <ToDoForm 
-        v-if="showForm" 
-        :todo="editingTodo" 
-        @save="handleSave" 
-        @cancel="cancelEdit" 
+      <ToDoForm
+        v-if="showForm"
+        :todo="editingTodo"
+        @save="handleSave"
+        @cancel="cancelEdit"
       />
     </Transition>
 
@@ -133,10 +140,10 @@ const cancelEdit = () => {
     </div>
 
     <TransitionGroup v-else name="list" tag="div" class="todo-list">
-      <ToDoItem 
-        v-for="todo in sortedToDos" 
-        :key="todo.id" 
-        :todo="todo" 
+      <ToDoItem
+        v-for="todo in sortedToDos"
+        :key="todo.id"
+        :todo="todo"
         @toggle-status="handleToggleStatus"
         @delete="handleDelete"
         @edit="startEdit"

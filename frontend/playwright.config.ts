@@ -34,13 +34,12 @@ export default defineConfig({
     /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
     actionTimeout: 0,
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.CI ? 'http://localhost:4173' : 'http://localhost:5175',
+    baseURL: 'http://localhost:5175',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
 
-    /* Only on CI systems run the tests headless */
-    headless: !!process.env.CI,
+    headless: true,
   },
 
   /* Configure projects for major browsers */
@@ -97,9 +96,9 @@ export default defineConfig({
   // outputDir: 'test-results/',
 
   /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: process.env.CI ? 'npm run preview' : 'npm run dev -- --port 5175',
-  //   port: process.env.CI ? 4173 : 5175,
-  //   reuseExistingServer: !process.env.CI,
-  // },
+  webServer: {
+    command: 'npm run dev -- --port 5175',
+    port: 5175,
+    reuseExistingServer: true,
+  },
 })
