@@ -22,7 +22,7 @@ watch(() => props.todo, (newVal) => {
 
 const submit = () => {
   if (!title.value.trim() || props.submitting) return;
-  emit('save', { title: title.value, description: description.value });
+  emit('save', { title: title.value.trim(), description: description.value });
   if (!props.todo) {
     title.value = '';
     description.value = '';
@@ -42,6 +42,7 @@ const submit = () => {
           type="text"
           required
           placeholder="What needs to be done?"
+          maxlength="200"
           class="form-input"
           :disabled="submitting"
         />
@@ -54,6 +55,7 @@ const submit = () => {
           v-model="description"
           rows="3"
           placeholder="Add some details..."
+          maxlength="2000"
           class="form-input textarea"
           :disabled="submitting"
         ></textarea>

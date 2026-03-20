@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import ToDoItem from '../ToDoItem.vue';
-import type { ToDo } from '@/types/todo';
+import type { ToDo, ISODateTime } from '@/types/todo';
 
 describe('ToDoItem.vue', () => {
-  const mockValidDate = new Date().toISOString();
+  const mockValidDate = new Date().toISOString() as ISODateTime;
   
   const mockTodo: ToDo = {
     id: 'test-1',
@@ -27,7 +27,7 @@ describe('ToDoItem.vue', () => {
   });
 
   it('renders a completed ToDo correctly', () => {
-    const completedTodo = { ...mockTodo, finishedAt: new Date().toISOString() };
+    const completedTodo = { ...mockTodo, finishedAt: new Date().toISOString() as ISODateTime };
     const wrapper = mount(ToDoItem, {
       props: { todo: completedTodo }
     });

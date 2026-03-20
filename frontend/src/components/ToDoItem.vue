@@ -15,7 +15,7 @@ const emit = defineEmits<{
 const confirmingDelete = ref(false);
 
 const formatDate = (dateStr: string) => {
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(navigator.language, {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -31,7 +31,7 @@ const formatDate = (dateStr: string) => {
         <input 
           type="checkbox" 
           :checked="!!todo.finishedAt" 
-          @change="emit('toggleStatus', todo.id, ($event.target as HTMLInputElement).checked)"
+          @change="emit('toggleStatus', todo.id, ($event.target as HTMLInputElement)?.checked ?? false)"
         />
         <span class="checkmark"></span>
       </label>

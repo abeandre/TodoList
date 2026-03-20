@@ -2,6 +2,9 @@ import type { ToDo } from '@/types/todo';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/todo';
 
+// abort requests that stall longer than this
+const REQUEST_TIMEOUT_MS = 10_000;
+
 const DEFAULT_STATUS_MESSAGES: Partial<Record<number, string>> = {
   400: 'The request was invalid — title is required and must be under 200 characters, description under 2000.',
   404: 'The task no longer exists — it may have been deleted.',
@@ -24,18 +27,55 @@ async function httpError(response: Response, overrides: Partial<Record<number, s
     // ignore parse errors — fall through to generic message
   }
 
+  // generic fallback; do not expose raw HTTP status codes to the user
   const fallback = response.status >= 500
-    ? `Server error (HTTP ${response.status}) — please try again later.`
-    : `Request error (HTTP ${response.status}) — please check your request and try again.`;
+    ? 'A server error occurred — please try again later.'
+    : 'The request could not be completed — please check your input and try again.';
   return new Error(fallback);
 }
 
+// wraps fetch with a timeout; throws a user-friendly error on stall or network failure
 async function safeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    return await fetch(input, init);
-  } catch {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError')
+      throw new Error('The request timed out — please try again.');
     throw new Error('Cannot reach the server — check your connection and try again.');
+  } finally {
+    clearTimeout(timeoutId);
   }
+}
+
+// type guard for a single ToDo
+function isToDo(val: unknown): val is ToDo {
+  if (typeof val !== 'object' || val === null) return false;
+  const t = val as Record<string, unknown>;
+  return (
+    typeof t.id === 'string' &&
+    typeof t.title === 'string' &&
+    typeof t.description === 'string' &&
+    typeof t.createdAt === 'string' &&
+    typeof t.updatedAt === 'string' &&
+    (t.finishedAt === null || typeof t.finishedAt === 'string')
+  );
+}
+
+function isToDoArray(val: unknown): val is ToDo[] {
+  return Array.isArray(val) && val.every(isToDo);
+}
+
+// verify Content-Type before parsing, then validate shape at runtime
+async function parseJson<T>(response: Response, guard: (val: unknown) => val is T): Promise<T> {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error('Unexpected response format from server.');
+  }
+  const data: unknown = await response.json();
+  if (!guard(data)) throw new Error('Unexpected data shape received from server.');
+  return data;
 }
 
 export const todoService = {
@@ -44,13 +84,13 @@ export const todoService = {
     if (!response.ok) throw await httpError(response, {
       500: 'Server error while loading tasks — try refreshing the page.',
     });
-    return response.json();
+    return parseJson(response, isToDoArray);
   },
 
   async getById(id: string): Promise<ToDo> {
     const response = await safeFetch(`${API_BASE_URL}/${id}`);
     if (!response.ok) throw await httpError(response);
-    return response.json();
+    return parseJson(response, isToDo);
   },
 
   async create(todo: Pick<ToDo, 'title' | 'description'>): Promise<ToDo> {
@@ -63,7 +103,7 @@ export const todoService = {
       400: 'Could not create the task — title is required and must be under 200 characters, description under 2000.',
       500: 'Server error while creating the task — please try again.',
     });
-    return response.json();
+    return parseJson(response, isToDo);
   },
 
   async update(id: string, data: Pick<ToDo, 'title' | 'description'>): Promise<void> {

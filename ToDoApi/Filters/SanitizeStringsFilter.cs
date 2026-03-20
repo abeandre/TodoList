@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -10,21 +12,28 @@ namespace ToDoApi.Filters
     /// </summary>
     public class SanitizeStringsFilter : IActionFilter
     {
+        private const int MaxDepth = 5;
+        private static readonly ConcurrentDictionary<Type, PropertyInfo[]> _propertyCache = new();
+
         public void OnActionExecuting(ActionExecutingContext context)
         {
             foreach (var argument in context.ActionArguments.Values)
             {
                 if (argument is null) continue;
-                SanitizeObject(argument);
+                SanitizeObject(argument, depth: 0);
             }
         }
 
         public void OnActionExecuted(ActionExecutedContext context) { }
 
-        private static void SanitizeObject(object obj)
+        private static void SanitizeObject(object obj, int depth)
         {
+            if (depth >= MaxDepth) return;
+
             var type = obj.GetType();
-            foreach (var prop in type.GetProperties())
+            var properties = _propertyCache.GetOrAdd(type, t => t.GetProperties());
+
+            foreach (var prop in properties)
             {
                 if (!prop.CanRead || !prop.CanWrite) continue;
 
@@ -38,7 +47,7 @@ namespace ToDoApi.Filters
                 {
                     var nested = prop.GetValue(obj);
                     if (nested is not null)
-                        SanitizeObject(nested);
+                        SanitizeObject(nested, depth + 1);
                 }
             }
         }

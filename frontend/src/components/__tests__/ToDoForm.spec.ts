@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import ToDoForm from '../ToDoForm.vue';
-import type { ToDo } from '@/types/todo';
+import type { ToDo, ISODateTime } from '@/types/todo';
 
 describe('ToDoForm.vue', () => {
   it('renders correctly for a new ToDo', () => {
@@ -17,7 +17,8 @@ describe('ToDoForm.vue', () => {
       title: 'Current Task',
       description: 'Current Desc',
       finishedAt: null,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString() as ISODateTime,
+      updatedAt: new Date().toISOString() as ISODateTime
     };
     
     const wrapper = mount(ToDoForm, {
@@ -75,7 +76,8 @@ describe('ToDoForm.vue', () => {
       title: 'Task',
       description: '',
       finishedAt: null,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString() as ISODateTime,
+      updatedAt: new Date().toISOString() as ISODateTime
     };
     
     const wrapper = mount(ToDoForm, {

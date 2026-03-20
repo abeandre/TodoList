@@ -44,24 +44,20 @@ namespace ToDo.DataAccess.Repositories
 
         public async Task<bool> DeleteAsync(Guid id)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            var todo = await GetByIdAsync(id);
-            if (todo == null)
+            var todo = await _context.ToDos.FindAsync(id);
+            if (todo is null)
             {
                 _logger.LogDebug("DeleteAsync: todo {Id} not found", id);
                 return false;
             }
-
             _context.ToDos.Remove(todo);
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
             _logger.LogDebug("Deleted todo {Id}", id);
             return true;
         }
 
         public async Task<bool> ChangeStatusAsync(Guid id, bool isCompleted)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
             var todo = await GetByIdAsync(id);
             if (todo == null)
             {
@@ -73,7 +69,6 @@ namespace ToDo.DataAccess.Repositories
             todo.UpdatedAt = DateTime.UtcNow;
             _context.ToDos.Update(todo);
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
             _logger.LogDebug("Todo {Id} status changed to {Status}", id, isCompleted ? "completed" : "active");
             return true;
         }

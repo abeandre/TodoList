@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { todoService } from '@/services/todoService';
-import type { ToDo } from '@/types/todo';
+import type { ToDo, ISODateTime } from '@/types/todo';
 import ToDoForm from '@/components/ToDoForm.vue';
 import ToDoItem from '@/components/ToDoItem.vue';
 
@@ -13,6 +13,7 @@ const saving = ref(false);
 const showForm = ref(false);
 const editingTodo = ref<ToDo | undefined>(undefined);
 const pendingToggles = new Set<string>();
+const pendingDeletes = new Set<string>();
 
 const fetchToDos = async () => {
   loading.value = true;
@@ -56,6 +57,7 @@ const handleSave = async (data: { title: string; description: string }) => {
       if (todo) {
         todo.title = data.title;
         todo.description = data.description;
+        todo.updatedAt = new Date().toISOString() as ISODateTime;
       }
     } else {
       const created = await todoService.create(data);
@@ -79,13 +81,11 @@ const handleToggleStatus = async (id: string, isCompleted: boolean) => {
   const todo = todos.value.find(t => t.id === id);
   if (!todo) return;
   error.value = null;
-  const originalFinishedAt = todo.finishedAt;
-  todo.finishedAt = isCompleted ? new Date().toISOString() : null;
   pendingToggles.add(id);
   try {
     await todoService.changeStatus(id, isCompleted);
+    todo.finishedAt = isCompleted ? new Date().toISOString() as ISODateTime : null;
   } catch (err) {
-    todo.finishedAt = originalFinishedAt;
     error.value = err instanceof Error ? err.message : 'Could not update task status — please try again.';
   } finally {
     pendingToggles.delete(id);
@@ -93,12 +93,16 @@ const handleToggleStatus = async (id: string, isCompleted: boolean) => {
 };
 
 const handleDelete = async (id: string) => {
+  if (pendingDeletes.has(id)) return;
+  pendingDeletes.add(id);
   error.value = null;
   try {
     await todoService.delete(id);
     todos.value = todos.value.filter(t => t.id !== id);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Could not delete the task — please try again.';
+  } finally {
+    pendingDeletes.delete(id);
   }
 };
 

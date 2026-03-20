@@ -14,8 +14,11 @@ namespace ToDo.DataAccess
         {
             if (!optionsBuilder.IsConfigured)
             {
+                // Fallback for contexts created without DI (e.g. design-time tooling).
+                // Tests should always pass a unique DB name via DbContextOptions to avoid
+                // sharing state between test runs.
                 optionsBuilder
-                    .UseInMemoryDatabase("TodoList")
+                    .UseInMemoryDatabase(Guid.NewGuid().ToString())
                     .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning));
             }
         }

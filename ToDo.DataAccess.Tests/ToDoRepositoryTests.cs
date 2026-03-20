@@ -12,14 +12,35 @@ namespace ToDo.DataAccess.Tests
 {
     public class ToDoRepositoryTests
     {
-        private AppDbContext GetInMemoryDbContext()
+        private static AppDbContext GetInMemoryDbContext(string? dbName = null)
+        {
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(databaseName: dbName ?? Guid.NewGuid().ToString())
+                .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+                .Options;
+
+            return new AppDbContext(options);
+        }
+
+        private sealed class ThrowingDbContext : AppDbContext
+        {
+            public ThrowingDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+            public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+                => throw new DbUpdateException("Simulated save failure.", new Exception());
+
+            public Task<int> BaseSaveChangesAsync(CancellationToken cancellationToken = default)
+                => base.SaveChangesAsync(cancellationToken);
+        }
+
+        private static ThrowingDbContext GetThrowingDbContext()
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options;
 
-            return new AppDbContext(options);
+            return new ThrowingDbContext(options);
         }
 
         [Fact]
@@ -196,6 +217,62 @@ namespace ToDo.DataAccess.Tests
 
             // Assert
             Assert.False(changed);
+        }
+
+        [Fact]
+        public async Task AddAsync_PropagatesException_WhenSaveChangesFails()
+        {
+            var context = GetThrowingDbContext();
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
+            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Fail" };
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => repository.AddAsync(todo));
+        }
+
+        [Fact]
+        public async Task UpdateAsync_PropagatesException_WhenSaveChangesFails()
+        {
+            var context = GetThrowingDbContext();
+            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Original" };
+            context.ToDos.Add(todo);
+            await context.BaseSaveChangesAsync();
+
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
+            todo.Title = "Updated";
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => repository.UpdateAsync(todo));
+        }
+
+        [Fact]
+        public async Task ChangeStatusAsync_PropagatesException_WhenSaveChangesFails()
+        {
+            var context = GetThrowingDbContext();
+            var id = Guid.NewGuid();
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Status Fail" });
+            await context.BaseSaveChangesAsync();
+
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => repository.ChangeStatusAsync(id, true));
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ReturnsFalse_WhenEntityAlreadyDeletedByConcurrentContext()
+        {
+            var dbName = Guid.NewGuid().ToString();
+            var contextA = GetInMemoryDbContext(dbName);
+            var contextB = GetInMemoryDbContext(dbName);
+            var repoA = new ToDoRepository(contextA, NullLogger<ToDoRepository>.Instance);
+            var repoB = new ToDoRepository(contextB, NullLogger<ToDoRepository>.Instance);
+
+            var id = Guid.NewGuid();
+            await repoA.AddAsync(new DataAccess.ToDo { Id = id, Title = "Concurrent" });
+
+            var firstDelete = await repoA.DeleteAsync(id);
+            var secondDelete = await repoB.DeleteAsync(id);
+
+            Assert.True(firstDelete);
+            Assert.False(secondDelete);
         }
     }
 }
