@@ -8,7 +8,7 @@ describe('ToDoForm.vue', () => {
     const wrapper = mount(ToDoForm);
     expect(wrapper.find('.form-title').text()).toBe('Add New ToDo');
     expect(wrapper.find('button[type="submit"]').text()).toBe('Add ToDo');
-    expect(wrapper.find('button.btn-secondary').exists()).toBe(false);
+    expect(wrapper.find('button.btn-secondary').exists()).toBe(true);
   });
 
   it('renders correctly for editing an existing ToDo', () => {
@@ -82,6 +82,12 @@ describe('ToDoForm.vue', () => {
       props: { todo: mockToDo }
     });
     
+    await wrapper.find('button.btn-secondary').trigger('click');
+    expect(wrapper.emitted('cancel')).toBeTruthy();
+  });
+
+  it('emits cancel event when creating new and clicking Cancel', async () => {
+    const wrapper = mount(ToDoForm);
     await wrapper.find('button.btn-secondary').trigger('click');
     expect(wrapper.emitted('cancel')).toBeTruthy();
   });

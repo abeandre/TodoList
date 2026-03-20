@@ -57,7 +57,7 @@ const submit = () => {
       </div>
 
       <div class="form-actions">
-        <button type="button" v-if="todo" @click="emit('cancel')" class="btn btn-secondary">Cancel</button>
+        <button type="button" @click="emit('cancel')" class="btn btn-secondary">Cancel</button>
         <button type="submit" class="btn btn-primary">
           {{ todo ? 'Save Changes' : 'Add ToDo' }}
         </button>
