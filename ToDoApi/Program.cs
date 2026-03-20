@@ -1,3 +1,4 @@
+using Scalar.AspNetCore;
 using ToDo.DataAccess;
 using ToDo.DataAccess.Repositories;
 
@@ -17,6 +18,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();

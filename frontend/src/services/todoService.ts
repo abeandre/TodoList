@@ -3,7 +3,7 @@ import type { ToDo } from '@/types/todo';
 const API_BASE_URL = '/api/todo';
 
 const DEFAULT_STATUS_MESSAGES: Partial<Record<number, string>> = {
-  400: 'The request was invalid — check that the title is not empty and under 200 characters.',
+  400: 'The request was invalid — title is required and must be under 200 characters, description under 2000.',
   404: 'The task no longer exists — it may have been deleted.',
   500: 'A server error occurred — please try again later.',
 };
@@ -46,7 +46,7 @@ export const todoService = {
       body: JSON.stringify(todo),
     });
     if (!response.ok) throw httpError(response, {
-      400: 'Could not create the task — title is required and must be under 200 characters.',
+      400: 'Could not create the task — title is required and must be under 200 characters, description under 2000.',
       500: 'Server error while creating the task — please try again.',
     });
     return response.json();
@@ -59,7 +59,7 @@ export const todoService = {
       body: JSON.stringify(data),
     });
     if (!response.ok) throw httpError(response, {
-      400: 'Could not save changes — title is required and must be under 200 characters.',
+      400: 'Could not save changes — title is required and must be under 200 characters, description under 2000.',
       404: 'This task no longer exists — it may have been deleted by someone else.',
       500: 'Server error while saving changes — please try again.',
     });
