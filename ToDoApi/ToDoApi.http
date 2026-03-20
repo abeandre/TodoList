@@ -23,7 +23,6 @@ PUT {{ToDoApi_HostAddress}}/api/todo/{{todo_id}}
 Content-Type: application/json
 
 {
-  "id": "{{todo_id}}",
   "title": "Buy groceries",
   "description": "Milk, Bread, Cheese, Eggs"
 }

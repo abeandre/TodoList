@@ -1,20 +1,21 @@
 using Scalar.AspNetCore;
 using ToDo.DataAccess;
 using ToDo.DataAccess.Repositories;
+using ToDoApi.Mappings;
+using ToDoApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>();
 builder.Services.AddScoped<IToDoRepository, ToDoRepository>();
+builder.Services.AddScoped<IToDoService, ToDoService>();
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<ToDoMappingProfile>());
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

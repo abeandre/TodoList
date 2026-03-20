@@ -1,19 +1,18 @@
 using Microsoft.AspNetCore.Mvc;
-using ToDo.DataAccess.Repositories;
 using ToDoApi.Models;
+using ToDoApi.Services;
 
 namespace ToDoApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ToDoController(IToDoRepository repository) : ControllerBase
+    public class ToDoController(IToDoService service) : ControllerBase
     {
         [HttpGet]
         [ProducesResponseType<IEnumerable<ToDoResponse>>(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<ToDoResponse>>> GetAll()
         {
-            var todos = await repository.GetAllAsync();
-            return Ok(todos.Select(ToDoResponse.From));
+            return Ok(await service.GetAllAsync());
         }
 
         [HttpGet("{id}")]
@@ -21,11 +20,8 @@ namespace ToDoApi.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ToDoResponse>> GetById(Guid id)
         {
-            var todo = await repository.GetByIdAsync(id);
-            if (todo == null)
-                return NotFound();
-
-            return Ok(ToDoResponse.From(todo));
+            var todo = await service.GetByIdAsync(id);
+            return todo is null ? NotFound() : Ok(todo);
         }
 
         [HttpPost]
@@ -33,16 +29,8 @@ namespace ToDoApi.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ToDoResponse>> Create(CreateToDoRequest request)
         {
-            var todo = new ToDo.DataAccess.ToDo
-            {
-                Id = Guid.NewGuid(),
-                Title = request.Title,
-                Description = request.Description ?? string.Empty,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await repository.AddAsync(todo);
-            return CreatedAtAction(nameof(GetById), new { id = todo.Id }, ToDoResponse.From(todo));
+            var created = await service.CreateAsync(request);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         [HttpPut("{id}")]
@@ -51,14 +39,7 @@ namespace ToDoApi.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Update(Guid id, UpdateToDoRequest request)
         {
-            var todo = await repository.GetByIdAsync(id);
-            if (todo == null)
-                return NotFound();
-
-            todo.Title = request.Title;
-            todo.Description = request.Description ?? string.Empty;
-            await repository.UpdateAsync(todo);
-            return NoContent();
+            return await service.UpdateAsync(id, request) ? NoContent() : NotFound();
         }
 
         [HttpDelete("{id}")]
@@ -66,11 +47,7 @@ namespace ToDoApi.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(Guid id)
         {
-            var found = await repository.DeleteAsync(id);
-            if (!found)
-                return NotFound();
-
-            return NoContent();
+            return await service.DeleteAsync(id) ? NoContent() : NotFound();
         }
 
         [HttpPatch("{id}/status")]
@@ -78,11 +55,7 @@ namespace ToDoApi.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> ChangeStatus(Guid id, [FromBody] bool isCompleted)
         {
-            var found = await repository.ChangeStatusAsync(id, isCompleted);
-            if (!found)
-                return NotFound();
-
-            return NoContent();
+            return await service.ChangeStatusAsync(id, isCompleted) ? NoContent() : NotFound();
         }
     }
 }
