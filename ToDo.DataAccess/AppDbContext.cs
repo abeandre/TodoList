@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace ToDo.DataAccess
 {
@@ -13,7 +14,9 @@ namespace ToDo.DataAccess
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseInMemoryDatabase("TodoList");
+                optionsBuilder
+                    .UseInMemoryDatabase("TodoList")
+                    .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning));
             }
         }
     }

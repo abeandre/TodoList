@@ -22,8 +22,7 @@ describe('App.vue (ToDo List)', () => {
     (todoService.getAll as any).mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([]), 100)));
     const wrapper = mount(App);
     
-    expect(wrapper.find('.loading-state').exists()).toBe(true);
-    expect(wrapper.text()).toContain('Loading your tasks...');
+    expect(wrapper.find('.skeleton-list').exists()).toBe(true);
   });
 
   it('renders empty state when no ToDos', async () => {
@@ -39,8 +38,8 @@ describe('App.vue (ToDo List)', () => {
 
   it('renders a list of ToDos fetching from API', async () => {
     const mockToDos = [
-      { id: '1', title: 'Task 1', description: '', finishedAt: null, createdAt: new Date().toISOString() },
-      { id: '2', title: 'Task 2', description: '', finishedAt: new Date().toISOString(), createdAt: new Date().toISOString() }
+      { id: '1', title: 'Task 1', description: '', finishedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: '2', title: 'Task 2', description: '', finishedAt: new Date().toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
     ];
     (todoService.getAll as any).mockResolvedValue(mockToDos);
     const wrapper = mount(App);

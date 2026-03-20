@@ -12,14 +12,16 @@ namespace ToDoApi.Mappings
             CreateMap<CreateToDoRequest, ToDo.DataAccess.ToDo>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.FinishedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description ?? string.Empty));
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.FinishedAt, opt => opt.Ignore());
 
+            // FinishedAt is intentionally excluded from UpdateToDoRequest — completion status
+            // is managed via the dedicated PATCH /status endpoint, not the PUT /update endpoint.
             CreateMap<UpdateToDoRequest, ToDo.DataAccess.ToDo>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.FinishedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description ?? string.Empty));
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.FinishedAt, opt => opt.Ignore());
         }
     }
 }

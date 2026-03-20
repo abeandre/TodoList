@@ -11,7 +11,8 @@ describe('ToDoItem.vue', () => {
     title: 'Test Title',
     description: 'Test Describe',
     finishedAt: null,
-    createdAt: mockValidDate
+    createdAt: mockValidDate,
+    updatedAt: mockValidDate
   };
 
   it('renders a ToDo correctly', () => {
@@ -58,14 +59,31 @@ describe('ToDoItem.vue', () => {
     expect(wrapper.emitted('edit')?.[0]).toEqual([mockTodo]);
   });
 
-  it('emits delete when delete button is clicked', async () => {
+  it('shows confirmation on delete button click, then emits delete on confirm', async () => {
     const wrapper = mount(ToDoItem, {
       props: { todo: mockTodo }
     });
-    
+
+    // First click shows confirmation
     await wrapper.find('.delete-btn').trigger('click');
-    
+    expect(wrapper.find('.confirm-yes-btn').exists()).toBe(true);
+    expect(wrapper.emitted('delete')).toBeFalsy();
+
+    // Second click (confirm) emits delete
+    await wrapper.find('.confirm-yes-btn').trigger('click');
     expect(wrapper.emitted('delete')).toBeTruthy();
     expect(wrapper.emitted('delete')?.[0]).toEqual(['test-1']);
+  });
+
+  it('cancels delete when No is clicked', async () => {
+    const wrapper = mount(ToDoItem, {
+      props: { todo: mockTodo }
+    });
+
+    await wrapper.find('.delete-btn').trigger('click');
+    await wrapper.find('.confirm-no-btn').trigger('click');
+
+    expect(wrapper.find('.delete-btn').exists()).toBe(true);
+    expect(wrapper.emitted('delete')).toBeFalsy();
   });
 });

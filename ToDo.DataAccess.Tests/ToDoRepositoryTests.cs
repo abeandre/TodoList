@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using ToDo.DataAccess;
 using ToDo.DataAccess.Repositories;
@@ -14,6 +16,7 @@ namespace ToDo.DataAccess.Tests
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options;
 
             return new AppDbContext(options);
@@ -24,7 +27,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Test Add", Description = "Testing Add" };
 
             // Act
@@ -41,7 +44,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var id = Guid.NewGuid();
             context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Test Get" });
             await context.SaveChangesAsync();
@@ -60,7 +63,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
 
             // Act
             var result = await repository.GetByIdAsync(Guid.NewGuid());
@@ -74,7 +77,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             context.ToDos.AddRange(
                 new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Task 1" },
                 new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Task 2" }
@@ -93,7 +96,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Old Title" };
             context.ToDos.Add(todo);
             await context.SaveChangesAsync();
@@ -113,7 +116,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var id = Guid.NewGuid();
             context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "To Delete" });
             await context.SaveChangesAsync();
@@ -132,7 +135,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
 
             // Act
             var deleted = await repository.DeleteAsync(Guid.NewGuid());
@@ -146,7 +149,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var id = Guid.NewGuid();
             context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Status Test" });
             await context.SaveChangesAsync();
@@ -166,7 +169,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var id = Guid.NewGuid();
             context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Status Test 2", FinishedAt = DateTime.UtcNow });
             await context.SaveChangesAsync();
@@ -186,7 +189,7 @@ namespace ToDo.DataAccess.Tests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var repository = new ToDoRepository(context);
+            var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
 
             // Act
             var changed = await repository.ChangeStatusAsync(Guid.NewGuid(), true);

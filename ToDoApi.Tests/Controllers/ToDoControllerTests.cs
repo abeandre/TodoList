@@ -155,7 +155,7 @@ namespace ToDoApi.Tests.Controllers
             _mockService.Setup(s => s.ChangeStatusAsync(id, true)).ReturnsAsync(true);
 
             // Act
-            var result = await _controller.ChangeStatus(id, true);
+            var result = await _controller.ChangeStatus(id, new ChangeStatusRequest { IsCompleted = true });
 
             // Assert
             Assert.IsType<NoContentResult>(result);
@@ -169,7 +169,7 @@ namespace ToDoApi.Tests.Controllers
             _mockService.Setup(s => s.ChangeStatusAsync(It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(false);
 
             // Act
-            var result = await _controller.ChangeStatus(Guid.NewGuid(), false);
+            var result = await _controller.ChangeStatus(Guid.NewGuid(), new ChangeStatusRequest { IsCompleted = false });
 
             // Assert
             Assert.IsType<NotFoundResult>(result);

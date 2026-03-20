@@ -9,6 +9,6 @@ namespace ToDoApi.Models
         public string Title { get; set; } = string.Empty;
 
         [MaxLength(2000)]
-        public string? Description { get; set; }
+        public string Description { get; set; } = string.Empty;
     }
 }

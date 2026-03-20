@@ -1,9 +1,64 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('ToDo Application', () => {
-  const uniqueId = Date.now().toString();
+  const uniqueId = crypto.randomUUID();
   const titleText = `E2E Playwright Task ${uniqueId}`;
-  
+
+  test('Shows error banner when API is unreachable', async ({ page }) => {
+    // Intercept all API calls and simulate a network failure
+    await page.route('/api/todo', route => route.abort());
+    await page.goto('/');
+
+    await expect(page.locator('.error-banner')).toBeVisible();
+  });
+
+  test('Shows error banner when creating a task fails', async ({ page }) => {
+    await page.goto('/');
+    // Let GET succeed so the page loads, then fail POST
+    await page.route('/api/todo', route => {
+      if (route.request().method() === 'POST') {
+        route.fulfill({ status: 500, body: '' });
+      } else {
+        route.continue();
+      }
+    });
+
+    await page.click('.new-task-btn');
+    await page.fill('#title', 'Will fail');
+    await page.click('button[type="submit"]');
+
+    await expect(page.locator('.error-banner')).toBeVisible();
+  });
+
+  test('Shows error banner when deleting a task fails', async ({ page }) => {
+    await page.goto('/');
+
+    // Let the page fully load first
+    await page.waitForSelector('h1');
+
+    // Create a task to delete
+    await page.click('.new-task-btn');
+    await page.fill('#title', `Delete-fail-${crypto.randomUUID()}`);
+    await page.click('button[type="submit"]');
+
+    const todoItem = page.locator('.todo-item').first();
+    await expect(todoItem).toBeVisible();
+
+    // Fail the DELETE
+    await page.route(/\/api\/todo\/[^/]+$/, route => {
+      if (route.request().method() === 'DELETE') {
+        route.fulfill({ status: 500, body: '' });
+      } else {
+        route.continue();
+      }
+    });
+
+    await todoItem.locator('.delete-btn').click();
+    await todoItem.locator('.confirm-yes-btn').click();
+
+    await expect(page.locator('.error-banner')).toBeVisible();
+  });
+
   test('Complete CRUD flow for a ToDo item', async ({ page }) => {
     // 1. Visit the home page
     await page.goto('/');
@@ -37,16 +92,17 @@ test.describe('ToDo Application', () => {
     await expect(editedTodoItem).toBeVisible();
     
     // 6. Complete the ToDo
-    const checkboxLabel = editedTodoItem.locator('.checkmark');
-    await checkboxLabel.click();
+    // The checkbox input is hidden by CSS (custom checkbox pattern); force the click on the visual overlay
+    await editedTodoItem.locator('.checkmark').click({ force: true });
     
     // Verify it changed to completed state
     await expect(editedTodoItem).toHaveClass(/is-completed/);
     
-    // 7. Delete the ToDo
+    // 7. Delete the ToDo — first click shows confirmation, second confirms
     await editedTodoItem.locator('.delete-btn').click();
-    
-    // Verify it implies disappearance
+    await editedTodoItem.locator('.confirm-yes-btn').click();
+
+    // Verify it disappears
     await expect(editedTodoItem).toBeHidden();
   });
 });

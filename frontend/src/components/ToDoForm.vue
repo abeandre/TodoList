@@ -4,6 +4,7 @@ import type { ToDo } from '@/types/todo';
 
 const props = defineProps<{
   todo?: ToDo;
+  submitting?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -20,7 +21,7 @@ watch(() => props.todo, (newVal) => {
 });
 
 const submit = () => {
-  if (!title.value.trim()) return;
+  if (!title.value.trim() || props.submitting) return;
   emit('save', { title: title.value, description: description.value });
   if (!props.todo) {
     title.value = '';
@@ -30,36 +31,38 @@ const submit = () => {
 </script>
 
 <template>
-  <div class="todo-form">
+  <div class="todo-form" @keydown.esc="emit('cancel')">
     <h3 class="form-title">{{ todo ? 'Edit ToDo' : 'Add New ToDo' }}</h3>
-    <form @submit.prevent="submit" class="form-content">
+    <form @submit.prevent="submit" @keydown.ctrl.enter="submit" class="form-content">
       <div class="form-group">
         <label for="title">Title</label>
-        <input 
-          id="title" 
-          v-model="title" 
-          type="text" 
-          required 
+        <input
+          id="title"
+          v-model="title"
+          type="text"
+          required
           placeholder="What needs to be done?"
           class="form-input"
+          :disabled="submitting"
         />
       </div>
       
       <div class="form-group">
         <label for="description">Description</label>
-        <textarea 
-          id="description" 
-          v-model="description" 
-          rows="3" 
+        <textarea
+          id="description"
+          v-model="description"
+          rows="3"
           placeholder="Add some details..."
           class="form-input textarea"
+          :disabled="submitting"
         ></textarea>
       </div>
 
       <div class="form-actions">
-        <button type="button" @click="emit('cancel')" class="btn btn-secondary">Cancel</button>
-        <button type="submit" class="btn btn-primary">
-          {{ todo ? 'Save Changes' : 'Add ToDo' }}
+        <button type="button" @click="emit('cancel')" class="btn btn-secondary" :disabled="submitting">Cancel</button>
+        <button type="submit" class="btn btn-primary" :disabled="submitting">
+          {{ submitting ? 'Saving...' : (todo ? 'Save Changes' : 'Add ToDo') }}
         </button>
       </div>
     </form>

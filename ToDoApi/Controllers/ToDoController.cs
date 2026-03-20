@@ -15,8 +15,9 @@ namespace ToDoApi.Controllers
             return Ok(await service.GetAllAsync());
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:guid}")]
         [ProducesResponseType<ToDoResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ToDoResponse>> GetById(Guid id)
         {
@@ -33,7 +34,7 @@ namespace ToDoApi.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
-        [HttpPut("{id}")]
+        [HttpPut("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -42,20 +43,22 @@ namespace ToDoApi.Controllers
             return await service.UpdateAsync(id, request) ? NoContent() : NotFound();
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(Guid id)
         {
             return await service.DeleteAsync(id) ? NoContent() : NotFound();
         }
 
-        [HttpPatch("{id}/status")]
+        [HttpPatch("{id:guid}/status")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult> ChangeStatus(Guid id, [FromBody] bool isCompleted)
+        public async Task<ActionResult> ChangeStatus(Guid id, ChangeStatusRequest request)
         {
-            return await service.ChangeStatusAsync(id, isCompleted) ? NoContent() : NotFound();
+            return await service.ChangeStatusAsync(id, request.IsCompleted) ? NoContent() : NotFound();
         }
     }
 }

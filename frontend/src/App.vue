@@ -8,9 +8,11 @@ import ToDoItem from '@/components/ToDoItem.vue';
 const todos = ref<ToDo[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const saving = ref(false);
 
 const showForm = ref(false);
 const editingTodo = ref<ToDo | undefined>(undefined);
+const pendingToggles = new Set<string>();
 
 const fetchToDos = async () => {
   loading.value = true;
@@ -45,6 +47,8 @@ const sortedToDos = computed(() => {
 const remainingCount = computed(() => todos.value.filter(t => !t.finishedAt).length);
 
 const handleSave = async (data: { title: string; description: string }) => {
+  error.value = null;
+  saving.value = true;
   try {
     if (editingTodo.value) {
       await todoService.update(editingTodo.value.id, data);
@@ -65,23 +69,31 @@ const handleSave = async (data: { title: string; description: string }) => {
       : editingTodo.value
         ? 'Could not save changes — please try again.'
         : 'Could not create the task — please try again.';
+  } finally {
+    saving.value = false;
   }
 };
 
 const handleToggleStatus = async (id: string, isCompleted: boolean) => {
+  if (pendingToggles.has(id)) return;
   const todo = todos.value.find(t => t.id === id);
   if (!todo) return;
+  error.value = null;
   const originalFinishedAt = todo.finishedAt;
   todo.finishedAt = isCompleted ? new Date().toISOString() : null;
+  pendingToggles.add(id);
   try {
     await todoService.changeStatus(id, isCompleted);
   } catch (err) {
     todo.finishedAt = originalFinishedAt;
     error.value = err instanceof Error ? err.message : 'Could not update task status — please try again.';
+  } finally {
+    pendingToggles.delete(id);
   }
 };
 
 const handleDelete = async (id: string) => {
+  error.value = null;
   try {
     await todoService.delete(id);
     todos.value = todos.value.filter(t => t.id !== id);
@@ -123,14 +135,20 @@ const cancelEdit = () => {
       <ToDoForm
         v-if="showForm"
         :todo="editingTodo"
+        :submitting="saving"
         @save="handleSave"
         @cancel="cancelEdit"
       />
     </Transition>
 
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>Loading your tasks...</p>
+    <div v-if="loading" class="skeleton-list" aria-label="Loading tasks...">
+      <div v-for="n in 3" :key="n" class="skeleton-item">
+        <div class="skeleton skeleton-checkbox"></div>
+        <div class="skeleton-content">
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-desc"></div>
+        </div>
+      </div>
     </div>
 
     <div v-else-if="todos.length === 0" class="empty-state">
@@ -224,24 +242,62 @@ const cancelEdit = () => {
   cursor: pointer;
 }
 
-.loading-state, .empty-state {
+.empty-state {
   text-align: center;
   padding: 4rem 0;
   color: var(--text-color-light);
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.skeleton-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--surface-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--border-color) 25%, var(--surface-color) 50%, var(--border-color) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-checkbox {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.skeleton-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-title {
+  height: 1.125rem;
+  width: 60%;
+}
+
+.skeleton-desc {
+  height: 0.875rem;
+  width: 40%;
 }
 
 .empty-icon {
