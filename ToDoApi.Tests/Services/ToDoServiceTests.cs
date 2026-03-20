@@ -32,7 +32,7 @@ namespace ToDoApi.Tests.Services
         // --- GetAllAsync ---
 
         [Fact]
-        public async Task GetAllAsync_ReturnsMappedResponses()
+        public async Task GetAllAsyncReturnsMappedResponses()
         {
             var todos = new List<ToDo.DataAccess.ToDo>
             {
@@ -50,7 +50,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task GetAllAsync_ReturnsEmptyWhenNoTodos()
+        public async Task GetAllAsyncReturnsEmptyWhenNoTodos()
         {
             _mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<ToDo.DataAccess.ToDo>());
 
@@ -62,7 +62,7 @@ namespace ToDoApi.Tests.Services
         // --- GetByIdAsync ---
 
         [Fact]
-        public async Task GetByIdAsync_ReturnsMappedResponse_WhenFound()
+        public async Task GetByIdAsyncReturnsMappedResponse_WhenFound()
         {
             var id = Guid.NewGuid();
             var todo = new ToDo.DataAccess.ToDo { Id = id, Title = "Found", Description = "Desc", CreatedAt = DateTime.UtcNow };
@@ -77,7 +77,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task GetByIdAsync_ReturnsNull_WhenNotFound()
+        public async Task GetByIdAsyncReturnsNull_WhenNotFound()
         {
             _mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ToDo.DataAccess.ToDo?)null);
 
@@ -89,7 +89,7 @@ namespace ToDoApi.Tests.Services
         // --- CreateAsync ---
 
         [Fact]
-        public async Task CreateAsync_MapsFieldsAndPersists()
+        public async Task CreateAsyncMapsFieldsAndPersists()
         {
             var request = new CreateToDoRequest { Title = "New Todo", Description = "Some desc" };
             _mockRepo.Setup(r => r.AddAsync(It.IsAny<ToDo.DataAccess.ToDo>())).Returns(Task.CompletedTask);
@@ -102,7 +102,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task CreateAsync_AssignsNewId()
+        public async Task CreateAsyncAssignsNewId()
         {
             var request = new CreateToDoRequest { Title = "Todo" };
             _mockRepo.Setup(r => r.AddAsync(It.IsAny<ToDo.DataAccess.ToDo>())).Returns(Task.CompletedTask);
@@ -113,7 +113,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task CreateAsync_AssignsCreatedAt()
+        public async Task CreateAsyncAssignsCreatedAt()
         {
             var before = DateTime.UtcNow;
             var request = new CreateToDoRequest { Title = "Todo" };
@@ -126,7 +126,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task CreateAsync_MapsNullDescriptionToEmpty()
+        public async Task CreateAsyncMapsNullDescriptionToEmpty()
         {
             var request = new CreateToDoRequest { Title = "Todo", Description = null };
             _mockRepo.Setup(r => r.AddAsync(It.IsAny<ToDo.DataAccess.ToDo>())).Returns(Task.CompletedTask);
@@ -139,7 +139,7 @@ namespace ToDoApi.Tests.Services
         // --- UpdateAsync ---
 
         [Fact]
-        public async Task UpdateAsync_ReturnsFalse_WhenNotFound()
+        public async Task UpdateAsyncReturnsFalse_WhenNotFound()
         {
             _mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ToDo.DataAccess.ToDo?)null);
 
@@ -150,7 +150,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task UpdateAsync_ReturnsTrue_AndPersistsChanges()
+        public async Task UpdateAsyncReturnsTrue_AndPersistsChanges()
         {
             var id = Guid.NewGuid();
             var existing = new ToDo.DataAccess.ToDo { Id = id, Title = "Old", Description = "Old desc" };
@@ -167,7 +167,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task UpdateAsync_MapsNullDescriptionToEmpty()
+        public async Task UpdateAsyncMapsNullDescriptionToEmpty()
         {
             var id = Guid.NewGuid();
             var existing = new ToDo.DataAccess.ToDo { Id = id, Title = "Old", Description = "Had desc" };
@@ -181,7 +181,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task UpdateAsync_PreservesIdAndCreatedAt()
+        public async Task UpdateAsyncPreservesIdAndCreatedAt()
         {
             var id = Guid.NewGuid();
             var createdAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -198,7 +198,7 @@ namespace ToDoApi.Tests.Services
         // --- DeleteAsync ---
 
         [Fact]
-        public async Task DeleteAsync_ReturnsTrue_WhenFound()
+        public async Task DeleteAsyncReturnsTrue_WhenFound()
         {
             var id = Guid.NewGuid();
             _mockRepo.Setup(r => r.DeleteAsync(id)).ReturnsAsync(true);
@@ -210,7 +210,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task DeleteAsync_ReturnsFalse_WhenNotFound()
+        public async Task DeleteAsyncReturnsFalse_WhenNotFound()
         {
             _mockRepo.Setup(r => r.DeleteAsync(It.IsAny<Guid>())).ReturnsAsync(false);
 
@@ -222,7 +222,7 @@ namespace ToDoApi.Tests.Services
         // --- ChangeStatusAsync ---
 
         [Fact]
-        public async Task ChangeStatusAsync_ReturnsTrue_WhenFound()
+        public async Task ChangeStatusAsyncReturnsTrue_WhenFound()
         {
             var id = Guid.NewGuid();
             _mockRepo.Setup(r => r.ChangeStatusAsync(id, true)).ReturnsAsync(true);
@@ -234,7 +234,7 @@ namespace ToDoApi.Tests.Services
         }
 
         [Fact]
-        public async Task ChangeStatusAsync_ReturnsFalse_WhenNotFound()
+        public async Task ChangeStatusAsyncReturnsFalse_WhenNotFound()
         {
             _mockRepo.Setup(r => r.ChangeStatusAsync(It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(false);
 

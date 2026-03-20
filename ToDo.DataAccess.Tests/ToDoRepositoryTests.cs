@@ -20,7 +20,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task AddAsync_ShouldAddToDo()
+        public async Task AddAsyncShouldAddToDo()
         {
             // Arrange
             var context = GetInMemoryDbContext();
@@ -37,7 +37,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task GetByIdAsync_ShouldReturnCorrectToDo()
+        public async Task GetByIdAsyncShouldReturnCorrectToDo()
         {
             // Arrange
             var context = GetInMemoryDbContext();
@@ -56,7 +56,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task GetByIdAsync_ShouldReturnNullWhenNotFound()
+        public async Task GetByIdAsyncShouldReturnNullWhenNotFound()
         {
             // Arrange
             var context = GetInMemoryDbContext();
@@ -70,7 +70,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task GetAllAsync_ShouldReturnAllToDos()
+        public async Task GetAllAsyncShouldReturnAllToDos()
         {
             // Arrange
             var context = GetInMemoryDbContext();
@@ -89,7 +89,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task UpdateAsync_ShouldUpdateToDo()
+        public async Task UpdateAsyncShouldUpdateToDo()
         {
             // Arrange
             var context = GetInMemoryDbContext();
@@ -109,7 +109,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task DeleteAsync_ShouldRemoveToDoAndReturnTrue()
+        public async Task DeleteAsyncShouldRemoveToDoAndReturnTrue()
         {
             // Arrange
             var context = GetInMemoryDbContext();
@@ -128,7 +128,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task DeleteAsync_ShouldReturnFalseWhenNotFound()
+        public async Task DeleteAsyncShouldReturnFalseWhenNotFound()
         {
             // Arrange
             var context = GetInMemoryDbContext();
@@ -142,7 +142,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task ChangeStatusAsync_ShouldSetFinishedAtWhenCompletedAndReturnTrue()
+        public async Task ChangeStatusAsyncShouldSetFinishedAtWhenCompletedAndReturnTrue()
         {
             // Arrange
             var context = GetInMemoryDbContext();
@@ -162,7 +162,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task ChangeStatusAsync_ShouldNullifyFinishedAtWhenNotCompleted()
+        public async Task ChangeStatusAsyncShouldNullifyFinishedAtWhenNotCompleted()
         {
             // Arrange
             var context = GetInMemoryDbContext();
@@ -182,7 +182,7 @@ namespace ToDo.DataAccess.Tests
         }
 
         [Fact]
-        public async Task ChangeStatusAsync_ShouldReturnFalseWhenNotFound()
+        public async Task ChangeStatusAsyncShouldReturnFalseWhenNotFound()
         {
             // Arrange
             var context = GetInMemoryDbContext();
