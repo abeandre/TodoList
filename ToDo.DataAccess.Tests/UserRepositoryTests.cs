@@ -96,15 +96,15 @@ namespace ToDo.DataAccess.Tests
             // Arrange
             var context = GetInMemoryDbContext();
             var repository = new UserRepository(context);
-            var user = new User 
-            { 
-                Id = Guid.NewGuid(), 
-                Name = "Old Name", 
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Name = "Old Name",
                 Email = "old@example.com",
                 Salt = "oldsalt",
                 HashedPassword = "oldpassword"
             };
-            
+
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
@@ -119,6 +119,31 @@ namespace ToDo.DataAccess.Tests
             Assert.Equal("New Name", result!.Name);
             Assert.Equal("new@example.com", result.Email);
             Assert.Equal(updatedUser.Id, result.Id);
+        }
+
+        [Fact]
+        public async Task DeleteUserAsync_ShouldRemoveUser()
+        {
+            // Arrange
+            var context = GetInMemoryDbContext();
+            var repository = new UserRepository(context);
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Name = "To Delete",
+                Email = "delete@example.com",
+                Salt = "salt",
+                HashedPassword = "hash"
+            };
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            // Act
+            await repository.DeleteUserAsync(user);
+
+            // Assert
+            var result = await context.Users.FindAsync(user.Id);
+            Assert.Null(result);
         }
     }
 }

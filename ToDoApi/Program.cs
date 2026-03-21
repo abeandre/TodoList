@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Text;
+using System.Threading.RateLimiting;
 using ToDo.DataAccess;
 using ToDo.DataAccess.Repositories;
 using ToDoApi.Filters;
@@ -52,6 +54,34 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     
 builder.Services.AddAuthorization();
 
+// Per-IP sliding-window rate limits on sensitive unauthenticated endpoints.
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("login", context =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 2,
+                PermitLimit = 10,
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("registration", context =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 2,
+                PermitLimit = 5,
+                QueueLimit = 0
+            }));
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 
@@ -94,6 +124,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 
 app.UseCors("FrontendPolicy");
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

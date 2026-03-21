@@ -45,6 +45,13 @@ namespace ToDoApi.Services
                 return false;
             }
 
+            if (request.Email != user.Email)
+            {
+                var conflict = await repository.GetUserByEmailAsync(request.Email);
+                if (conflict != null && conflict.Id != id)
+                    throw new ArgumentException("Email is already registered");
+            }
+
             mapper.Map(request, user);
             user.LastModifiedDate = DateTime.UtcNow;
 
@@ -59,6 +66,20 @@ namespace ToDoApi.Services
 
             await repository.UpdateUserAsync(user);
             logger.LogInformation("Updated user {Id}", id);
+            return true;
+        }
+
+        public async Task<bool> DeleteAsync(Guid id)
+        {
+            var user = await repository.GetUserByIdAsync(id);
+            if (user is null)
+            {
+                logger.LogWarning("Delete failed — user {Id} not found", id);
+                return false;
+            }
+
+            await repository.DeleteUserAsync(user);
+            logger.LogInformation("Deleted user {Id}", id);
             return true;
         }
     }

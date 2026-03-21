@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ToDoApi.Models;
 using ToDoApi.Services;
 
@@ -16,8 +17,10 @@ namespace ToDoApi.Controllers
     {
         [AllowAnonymous]
         [HttpPost]
+        [EnableRateLimiting("registration")]
         [ProducesResponseType<UserResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<UserResponse>> Create(CreateUserRequest request)
         {
             try
@@ -28,7 +31,7 @@ namespace ToDoApi.Controllers
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(ex.Message);
+                return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
             }
         }
 
@@ -43,7 +46,27 @@ namespace ToDoApi.Controllers
             if (!Guid.TryParse(callerIdStr, out var callerId) || callerId != id)
                 return Forbid();
 
-            return await service.UpdateAsync(id, request) ? NoContent() : NotFound();
+            try
+            {
+                return await service.UpdateAsync(id, request) ? NoContent() : NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+            }
+        }
+
+        [HttpDelete("{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> Delete(Guid id)
+        {
+            var callerIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(callerIdStr, out var callerId) || callerId != id)
+                return Forbid();
+
+            return await service.DeleteAsync(id) ? NoContent() : NotFound();
         }
     }
 }

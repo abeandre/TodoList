@@ -43,39 +43,46 @@ const handleRegister = async () => {
 
       <form @submit.prevent="handleRegister" class="auth-form">
         <div class="form-group">
-          <label for="username">Username</label>
-          <input 
-            type="text" 
-            id="username" 
-            v-model="username" 
-            required 
-            placeholder="Choose a username"
+          <label for="username">Name</label>
+          <input
+            type="text"
+            id="username"
+            v-model="username"
+            required
+            placeholder="Your display name"
+            autocomplete="name"
             :disabled="loading"
           />
         </div>
 
         <div class="form-group">
           <label for="email">Email</label>
-          <input 
-            type="email" 
-            id="email" 
-            v-model="email" 
-            required 
+          <input
+            type="email"
+            id="email"
+            v-model="email"
+            required
             placeholder="Enter your email"
+            autocomplete="email"
             :disabled="loading"
           />
         </div>
 
         <div class="form-group">
           <label for="password">Password</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="password" 
-            required 
+          <input
+            type="password"
+            id="password"
+            v-model="password"
+            required
+            minlength="8"
             placeholder="Create a password"
+            autocomplete="new-password"
             :disabled="loading"
           />
+          <span class="field-hint" :class="{ 'hint-warn': password.length > 0 && password.length < 8 }">
+            Minimum 8 characters{{ password.length > 0 ? ` (${password.length}/8)` : '' }}
+          </span>
         </div>
 
         <button type="submit" class="btn btn-primary submit-btn" :disabled="loading">
@@ -227,5 +234,14 @@ input:disabled {
   font-size: 1.25rem;
   cursor: pointer;
   line-height: 1;
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  color: var(--text-color-light);
+}
+
+.hint-warn {
+  color: var(--danger-color);
 }
 </style>

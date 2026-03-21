@@ -36,5 +36,11 @@ namespace ToDo.DataAccess.Repositories
             await _context.SaveChangesAsync();
             return user;
         }
+
+        public async Task DeleteUserAsync(User user)
+        {
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+        }
     }
 }

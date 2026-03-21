@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { authService } from '@/services/authService';
 
 const router = useRouter();
-const username = ref('');
+const email = ref('');
 const password = ref('');
 const error = ref<string | null>(null);
 const loading = ref(false);
@@ -14,7 +14,7 @@ const handleLogin = async () => {
   loading.value = true;
   try {
     await authService.login({
-      email: username.value,
+      email: email.value,
       password: password.value,
     });
     router.push('/');
@@ -41,13 +41,14 @@ const handleLogin = async () => {
 
       <form @submit.prevent="handleLogin" class="auth-form">
         <div class="form-group">
-          <label for="username">Username</label>
-          <input 
-            type="text" 
-            id="username" 
-            v-model="username" 
-            required 
-            placeholder="Enter your username"
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            v-model="email"
+            required
+            placeholder="Enter your email"
+            autocomplete="email"
             :disabled="loading"
           />
         </div>

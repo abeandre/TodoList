@@ -3,7 +3,6 @@ export interface UserResponse {
   name: string;
   email: string;
   token?: string; // JWT token returned upon registration or login
-  createdAt: string;
 }
 
 export interface CreateUserRequest {

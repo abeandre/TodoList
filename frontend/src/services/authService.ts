@@ -10,7 +10,9 @@ async function httpError(response: Response, overrides: Partial<Record<number, s
   try {
     const contentType = response.headers.get('content-type') ?? '';
     if (contentType.includes('application/json') || contentType.includes('application/problem+json')) {
-      const body = await response.json() as { title?: string; detail?: string };
+      const body = await response.json();
+      // Backend may return a plain string (e.g. "Email is already registered")
+      if (typeof body === 'string' && body) return new Error(body);
       const detail = body?.detail ?? body?.title;
       if (detail) return new Error(detail);
     }
@@ -18,6 +20,7 @@ async function httpError(response: Response, overrides: Partial<Record<number, s
     // ignore parse errors
   }
 
+  if (response.status === 429) return new Error('Too many requests — please wait a moment before trying again.');
   const fallback = response.status >= 500
     ? 'A server error occurred — please try again later.'
     : 'The request could not be completed — please check your credentials and try again.';
@@ -69,7 +72,8 @@ export const authService = {
     if (!response.ok) {
       throw await httpError(response, {
         400: 'Invalid login request.',
-        401: 'Invalid username or password.',
+        401: 'Invalid email or password.',
+        429: 'Too many login attempts — please wait a minute before trying again.',
       });
     }
 
@@ -88,10 +92,8 @@ export const authService = {
     });
 
     if (!response.ok) {
-      throw await httpError(response, {
-        400: 'Could not register user — perhaps the username or email is already taken.',
-        409: 'Username or email already exists.',
-      });
+      // No 400 override — let the server message (e.g. "Email is already registered") surface directly.
+      throw await httpError(response);
     }
 
     const data = await parseJson<UserResponse>(response);
@@ -99,6 +101,35 @@ export const authService = {
       this.setToken(data.token);
     }
     return data;
+  },
+
+  /** Decodes the `sub` claim from the stored JWT without verifying the signature. */
+  getUserId(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    try {
+      const part = token.split('.')[1];
+      if (!part) return null;
+      const payload = JSON.parse(atob(part));
+      return (payload.sub as string) ?? null;
+    } catch {
+      return null;
+    }
+  },
+
+  async deleteAccount(id: string): Promise<void> {
+    const response = await safeFetch(`${API_BASE_URL}/user/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${this.getToken()}` },
+    });
+
+    if (!response.ok) {
+      throw await httpError(response, {
+        403: 'You can only delete your own account.',
+        404: 'Account not found.',
+        429: 'Too many requests — please wait a moment before trying again.',
+      });
+    }
   },
 
   logout(): void {

@@ -126,5 +126,69 @@ namespace ToDoApi.Tests.Controllers
             Assert.IsType<ForbidResult>(result);
             _mockService.Verify(s => s.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateUserRequest>()), Times.Never);
         }
+
+        [Fact]
+        public async Task UpdateReturnsBadRequest_WhenEmailConflict()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            _controller.ControllerContext = MakeContext(id);
+            var request = new UpdateUserRequest { Name = "User", Email = "taken@example.com" };
+            _mockService.Setup(s => s.UpdateAsync(id, request)).ThrowsAsync(new ArgumentException("Email is already registered"));
+
+            // Act
+            var result = await _controller.Update(id, request);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal("Email is already registered", badRequest.Value);
+        }
+
+        [Fact]
+        public async Task DeleteReturnsNoContent_WhenOwner()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            _controller.ControllerContext = MakeContext(id);
+            _mockService.Setup(s => s.DeleteAsync(id)).ReturnsAsync(true);
+
+            // Act
+            var result = await _controller.Delete(id);
+
+            // Assert
+            Assert.IsType<NoContentResult>(result);
+            _mockService.Verify(s => s.DeleteAsync(id), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteReturnsNotFound_WhenUserDoesNotExist()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            _controller.ControllerContext = MakeContext(id);
+            _mockService.Setup(s => s.DeleteAsync(id)).ReturnsAsync(false);
+
+            // Act
+            var result = await _controller.Delete(id);
+
+            // Assert
+            Assert.IsType<NotFoundResult>(result);
+        }
+
+        [Fact]
+        public async Task DeleteReturnsForbid_WhenCallerIsNotOwner()
+        {
+            // Arrange
+            var userA = Guid.NewGuid();
+            var userB = Guid.NewGuid();
+            _controller.ControllerContext = MakeContext(userA);
+
+            // Act
+            var result = await _controller.Delete(userB);
+
+            // Assert
+            Assert.IsType<ForbidResult>(result);
+            _mockService.Verify(s => s.DeleteAsync(It.IsAny<Guid>()), Times.Never);
+        }
     }
 }

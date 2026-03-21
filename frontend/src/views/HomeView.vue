@@ -124,6 +124,25 @@ const handleLogout = () => {
   authService.logout();
   router.push('/login');
 };
+
+const showDeleteModal = ref(false);
+const deleting = ref(false);
+const deleteError = ref<string | null>(null);
+
+const handleDeleteAccount = async () => {
+  const userId = authService.getUserId();
+  if (!userId) return;
+  deleting.value = true;
+  deleteError.value = null;
+  try {
+    await authService.deleteAccount(userId);
+    authService.logout();
+    router.push('/register');
+  } catch (err) {
+    deleteError.value = err instanceof Error ? err.message : 'Could not delete account — please try again.';
+    deleting.value = false;
+  }
+};
 </script>
 
 <template>
@@ -140,6 +159,9 @@ const handleLogout = () => {
         </button>
         <button class="btn btn-secondary logout-btn" @click="handleLogout">
           Log Out
+        </button>
+        <button class="btn btn-danger-outline delete-account-btn" @click="showDeleteModal = true" title="Delete your account">
+          Delete Account
         </button>
       </div>
     </header>
@@ -185,6 +207,40 @@ const handleLogout = () => {
         @edit="startEdit"
       />
     </TransitionGroup>
+
+    <!-- Delete Account Confirmation Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showDeleteModal" class="modal-backdrop" @click.self="showDeleteModal = false">
+          <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <h2 id="modal-title" class="modal-title">Delete Account</h2>
+            <p class="modal-body">
+              This will permanently delete your account and <strong>all your tasks</strong>.
+              This action cannot be undone.
+            </p>
+
+            <div v-if="deleteError" class="modal-error">{{ deleteError }}</div>
+
+            <div class="modal-actions">
+              <button
+                class="btn btn-secondary"
+                :disabled="deleting"
+                @click="showDeleteModal = false; deleteError = null"
+              >
+                Cancel
+              </button>
+              <button
+                class="btn btn-danger"
+                :disabled="deleting"
+                @click="handleDeleteAccount"
+              >
+                {{ deleting ? 'Deleting...' : 'Delete My Account' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </main>
 </template>
 
@@ -240,6 +296,23 @@ const handleLogout = () => {
   background: var(--bg-color);
   border-color: var(--danger-color);
   color: var(--danger-color);
+}
+
+.delete-account-btn {
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border-radius: var(--border-radius);
+  background: transparent;
+  color: var(--danger-color);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-account-btn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: var(--danger-color);
 }
 
 .new-task-btn {
@@ -377,5 +450,116 @@ const handleLogout = () => {
 .slide-fade-leave-to {
   transform: translateY(-20px);
   opacity: 0;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.modal-card {
+  background: var(--surface-color);
+  border-radius: var(--border-radius);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  padding: 2rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.modal-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--danger-color);
+}
+
+.modal-body {
+  margin: 0 0 1.25rem 0;
+  color: var(--text-color-light);
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+.modal-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-danger {
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  border-radius: var(--border-radius);
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--secondary-color);
+  color: var(--text-color);
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  border-radius: var(--border-radius);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--border-color);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active .modal-card,
+.modal-leave-active .modal-card {
+  transition: transform 0.2s ease;
+}
+
+.modal-enter-from .modal-card,
+.modal-leave-to .modal-card {
+  transform: scale(0.95);
 }
 </style>

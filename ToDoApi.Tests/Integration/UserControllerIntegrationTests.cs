@@ -76,7 +76,7 @@ public class UserControllerIntegrationTests : IDisposable
     public async Task Create_ReturnsCreated_WithValidPayload()
     {
         var response = await _client.PostAsJsonAsync("/api/user",
-            new CreateUserRequest { Name = "Int Test User", Email = "int@test.com", Password = "pw" });
+            new CreateUserRequest { Name = "Int Test User", Email = "int@test.com", Password = "password123" });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var user = await response.Content.ReadFromJsonAsync<UserResponse>();
@@ -90,7 +90,7 @@ public class UserControllerIntegrationTests : IDisposable
     public async Task Create_WithEmptyName_ReturnsBadRequest()
     {
         var response = await _client.PostAsJsonAsync("/api/user",
-            new CreateUserRequest { Name = "", Email = "int@test.com", Password = "pw" });
+            new CreateUserRequest { Name = "", Email = "int@test.com", Password = "password123" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -99,7 +99,16 @@ public class UserControllerIntegrationTests : IDisposable
     public async Task Create_WithEmptyEmail_ReturnsBadRequest()
     {
         var response = await _client.PostAsJsonAsync("/api/user",
-            new CreateUserRequest { Name = "John", Email = "", Password = "pw" });
+            new CreateUserRequest { Name = "John", Email = "", Password = "password123" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WithInvalidEmail_ReturnsBadRequest()
+    {
+        var response = await _client.PostAsJsonAsync("/api/user",
+            new CreateUserRequest { Name = "John", Email = "not-an-email", Password = "password123" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -108,9 +117,34 @@ public class UserControllerIntegrationTests : IDisposable
     public async Task Create_WithEmailExceedingMaxLength_ReturnsBadRequest()
     {
         var response = await _client.PostAsJsonAsync("/api/user",
-            new CreateUserRequest { Name = "John", Email = new string('a', 201), Password = "pw" });
+            new CreateUserRequest { Name = "John", Email = new string('a', 201), Password = "password123" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WithShortPassword_ReturnsBadRequest()
+    {
+        var response = await _client.PostAsJsonAsync("/api/user",
+            new CreateUserRequest { Name = "John", Email = "john@test.com", Password = "short" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WithDuplicateEmail_ReturnsBadRequest()
+    {
+        var request1 = new CreateUserRequest { Name = "First User", Email = "duplicate@test.com", Password = "password123" };
+        var request2 = new CreateUserRequest { Name = "Second User", Email = "duplicate@test.com", Password = "password123" };
+
+        var response1 = await _client.PostAsJsonAsync("/api/user", request1);
+        Assert.Equal(HttpStatusCode.Created, response1.StatusCode);
+
+        var response2 = await _client.PostAsJsonAsync("/api/user", request2);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response2.StatusCode);
+        var content = await response2.Content.ReadAsStringAsync();
+        Assert.Contains("Email is already registered", content);
     }
 
     [Fact]
@@ -118,7 +152,7 @@ public class UserControllerIntegrationTests : IDisposable
     {
         // Arrange — create user, then authenticate as that user
         var createResponse = await _client.PostAsJsonAsync("/api/user",
-            new CreateUserRequest { Name = "ToUpdate", Email = "update@test.com", Password = "pw" });
+            new CreateUserRequest { Name = "ToUpdate", Email = "update@test.com", Password = "password123" });
         var createdUser = await createResponse.Content.ReadFromJsonAsync<UserResponse>();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", GenerateToken(createdUser!.Id));
@@ -134,18 +168,15 @@ public class UserControllerIntegrationTests : IDisposable
     [Fact]
     public async Task Update_ReturnsForbidden_WhenCallerIsNotOwner()
     {
-        // Arrange — create user, but authenticate as a different random user
         var createResponse = await _client.PostAsJsonAsync("/api/user",
-            new CreateUserRequest { Name = "Victim", Email = "victim@test.com", Password = "pw" });
+            new CreateUserRequest { Name = "Victim", Email = "victim@test.com", Password = "password123" });
         var victim = await createResponse.Content.ReadFromJsonAsync<UserResponse>();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", GenerateToken(Guid.NewGuid()));
 
-        // Act
         var response = await _client.PutAsJsonAsync($"/api/user/{victim!.Id}",
             new UpdateUserRequest { Name = "Hijacked", Email = "hijacked@test.com" });
 
-        // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
@@ -153,7 +184,7 @@ public class UserControllerIntegrationTests : IDisposable
     public async Task Update_WithEmptyName_ReturnsBadRequest()
     {
         var createResponse = await _client.PostAsJsonAsync("/api/user",
-            new CreateUserRequest { Name = "ToUpdate", Email = "update2@test.com", Password = "pw" });
+            new CreateUserRequest { Name = "ToUpdate", Email = "update2@test.com", Password = "password123" });
         var createdUser = await createResponse.Content.ReadFromJsonAsync<UserResponse>();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", GenerateToken(createdUser!.Id));
@@ -165,21 +196,83 @@ public class UserControllerIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task Create_WithDuplicateEmail_ReturnsBadRequest()
+    public async Task Update_ReturnsBadRequest_WhenEmailTakenByAnotherUser()
     {
-        // Arrange
-        var request1 = new CreateUserRequest { Name = "First User", Email = "duplicate@test.com", Password = "pw" };
-        var request2 = new CreateUserRequest { Name = "Second User", Email = "duplicate@test.com", Password = "pw" };
+        // Arrange — create two users, then try to update user1's email to user2's email
+        var r1 = await _client.PostAsJsonAsync("/api/user",
+            new CreateUserRequest { Name = "User1", Email = "user1@test.com", Password = "password123" });
+        var user1 = await r1.Content.ReadFromJsonAsync<UserResponse>();
 
-        var response1 = await _client.PostAsJsonAsync("/api/user", request1);
-        Assert.Equal(HttpStatusCode.Created, response1.StatusCode);
+        await _client.PostAsJsonAsync("/api/user",
+            new CreateUserRequest { Name = "User2", Email = "user2@test.com", Password = "password123" });
 
-        // Act
-        var response2 = await _client.PostAsJsonAsync("/api/user", request2);
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", GenerateToken(user1!.Id));
+
+        // Act — try to claim user2's email
+        var response = await _client.PutAsJsonAsync($"/api/user/{user1.Id}",
+            new UpdateUserRequest { Name = "User1", Email = "user2@test.com" });
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response2.StatusCode);
-        var content = await response2.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
         Assert.Contains("Email is already registered", content);
+    }
+
+    [Fact]
+    public async Task Delete_ReturnsNoContent_WhenOwner()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/user",
+            new CreateUserRequest { Name = "ToDelete", Email = "todelete@test.com", Password = "password123" });
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserResponse>();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", GenerateToken(createdUser!.Id));
+
+        var response = await _client.DeleteAsync($"/api/user/{createdUser.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_ReturnsForbidden_WhenCallerIsNotOwner()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/user",
+            new CreateUserRequest { Name = "Victim", Email = "victim2@test.com", Password = "password123" });
+        var victim = await createResponse.Content.ReadFromJsonAsync<UserResponse>();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", GenerateToken(Guid.NewGuid()));
+
+        var response = await _client.DeleteAsync($"/api/user/{victim!.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_ReturnsTooManyRequests_AfterExceedingRateLimit()
+    {
+        // Exhaust the 10-request-per-minute login limit from the same (loopback) IP
+        var loginRequest = new AuthRequest { Email = "ratelimit@test.com", Password = "doesnotmatter" };
+        HttpStatusCode? lastStatus = null;
+        for (var i = 0; i < 11; i++)
+        {
+            var r = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+            lastStatus = r.StatusCode;
+        }
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, lastStatus);
+    }
+
+    [Fact]
+    public async Task Registration_ReturnsTooManyRequests_AfterExceedingRateLimit()
+    {
+        HttpStatusCode? lastStatus = null;
+        for (var i = 0; i < 6; i++)
+        {
+            var r = await _client.PostAsJsonAsync("/api/user",
+                new CreateUserRequest { Name = $"User{i}", Email = $"rl{i}@test.com", Password = "password123" });
+            lastStatus = r.StatusCode;
+        }
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, lastStatus);
     }
 }

@@ -84,8 +84,9 @@ namespace ToDoApi.Tests.Services
             var id = Guid.NewGuid();
             var existing = new ToDo.DataAccess.User { Id = id, Name = "Old", Email = "old@example.com", Salt = "oldsalt", HashedPassword = "oldhash" };
             var request = new UpdateUserRequest { Name = "New Name", Email = "new@example.com" };
-            
+
             _mockRepo.Setup(r => r.GetUserByIdAsync(id)).ReturnsAsync(existing);
+            _mockRepo.Setup(r => r.GetUserByEmailAsync("new@example.com")).ReturnsAsync((ToDo.DataAccess.User?)null);
             _mockRepo.Setup(r => r.UpdateUserAsync(existing)).ReturnsAsync(existing);
 
             // Act
@@ -106,8 +107,9 @@ namespace ToDoApi.Tests.Services
             var id = Guid.NewGuid();
             var existing = new ToDo.DataAccess.User { Id = id, Name = "Old", Email = "old@example.com", Salt = "oldsalt", HashedPassword = "oldhash" };
             var request = new UpdateUserRequest { Name = "New", Email = "new@example.com", Password = "newpassword" };
-            
+
             _mockRepo.Setup(r => r.GetUserByIdAsync(id)).ReturnsAsync(existing);
+            _mockRepo.Setup(r => r.GetUserByEmailAsync("new@example.com")).ReturnsAsync((ToDo.DataAccess.User?)null);
             _mockRepo.Setup(r => r.UpdateUserAsync(existing)).ReturnsAsync(existing);
 
             // Act
@@ -117,6 +119,55 @@ namespace ToDoApi.Tests.Services
             Assert.True(result);
             Assert.NotEqual("oldsalt", existing.Salt);
             Assert.NotEqual("oldhash", existing.HashedPassword);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_ThrowsArgumentException_WhenEmailTakenByAnotherUser()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            var otherId = Guid.NewGuid();
+            var existing = new ToDo.DataAccess.User { Id = id, Name = "User", Email = "user@example.com" };
+            var conflicting = new ToDo.DataAccess.User { Id = otherId, Email = "taken@example.com" };
+            var request = new UpdateUserRequest { Name = "User", Email = "taken@example.com" };
+
+            _mockRepo.Setup(r => r.GetUserByIdAsync(id)).ReturnsAsync(existing);
+            _mockRepo.Setup(r => r.GetUserByEmailAsync("taken@example.com")).ReturnsAsync(conflicting);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateAsync(id, request));
+            Assert.Equal("Email is already registered", ex.Message);
+            _mockRepo.Verify(r => r.UpdateUserAsync(It.IsAny<ToDo.DataAccess.User>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ReturnsTrue_WhenUserExists()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            var existing = new ToDo.DataAccess.User { Id = id, Name = "User" };
+            _mockRepo.Setup(r => r.GetUserByIdAsync(id)).ReturnsAsync(existing);
+
+            // Act
+            var result = await _service.DeleteAsync(id);
+
+            // Assert
+            Assert.True(result);
+            _mockRepo.Verify(r => r.DeleteUserAsync(existing), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ReturnsFalse_WhenUserNotFound()
+        {
+            // Arrange
+            _mockRepo.Setup(r => r.GetUserByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ToDo.DataAccess.User?)null);
+
+            // Act
+            var result = await _service.DeleteAsync(Guid.NewGuid());
+
+            // Assert
+            Assert.False(result);
+            _mockRepo.Verify(r => r.DeleteUserAsync(It.IsAny<ToDo.DataAccess.User>()), Times.Never);
         }
 
         [Fact]
