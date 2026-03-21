@@ -60,33 +60,6 @@ namespace ToDoApi.Tests.Services
             Assert.Empty(result);
         }
 
-        // --- GetByIdAsync ---
-
-        [Fact]
-        public async Task GetByIdAsyncReturnsMappedResponse_WhenFound()
-        {
-            var id = Guid.NewGuid();
-            var todo = new ToDo.DataAccess.ToDo { Id = id, Title = "Found", Description = "Desc", CreatedAt = DateTime.UtcNow };
-            _mockRepo.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(todo);
-
-            var result = await _service.GetByIdAsync(id);
-
-            Assert.NotNull(result);
-            Assert.Equal(id, result.Id);
-            Assert.Equal("Found", result.Title);
-            Assert.Equal("Desc", result.Description);
-        }
-
-        [Fact]
-        public async Task GetByIdAsyncReturnsNull_WhenNotFound()
-        {
-            _mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ToDo.DataAccess.ToDo?)null);
-
-            var result = await _service.GetByIdAsync(Guid.NewGuid());
-
-            Assert.Null(result);
-        }
-
         // --- CreateAsync ---
 
         [Fact]
@@ -231,14 +204,6 @@ namespace ToDoApi.Tests.Services
             _mockRepo.Setup(r => r.GetAllAsync()).ThrowsAsync(new InvalidOperationException("DB error"));
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetAllAsync());
-        }
-
-        [Fact]
-        public async Task GetByIdAsyncPropagatesRepositoryException()
-        {
-            _mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ThrowsAsync(new InvalidOperationException("DB error"));
-
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetByIdAsync(Guid.NewGuid()));
         }
 
         [Fact]

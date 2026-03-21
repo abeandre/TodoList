@@ -158,8 +158,9 @@ public class ToDoControllerIntegrationTests : IDisposable
         await _client.PutAsJsonAsync($"/api/todo/{created!.Id}",
             new UpdateToDoRequest { Title = "<script>xss</script>" });
 
-        var get = await _client.GetAsync($"/api/todo/{created.Id}");
-        var updated = await get.Content.ReadFromJsonAsync<ToDoResponse>();
+        var get = await _client.GetAsync("/api/todo");
+        var all = await get.Content.ReadFromJsonAsync<List<ToDoResponse>>();
+        var updated = all?.Find(t => t.Id == created.Id);
         Assert.NotNull(updated);
         Assert.DoesNotContain("<script>", updated.Title);
     }

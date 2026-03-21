@@ -43,36 +43,6 @@ namespace ToDoApi.Tests.Controllers
         }
 
         [Fact]
-        public async Task GetByIdReturnsOkObjectResultWhenTodoExists()
-        {
-            // Arrange
-            var id = Guid.NewGuid();
-            var todo = new ToDoResponse { Id = id, Title = "Found It" };
-            _mockService.Setup(s => s.GetByIdAsync(id)).ReturnsAsync(todo);
-
-            // Act
-            var result = await _controller.GetById(id);
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returned = Assert.IsType<ToDoResponse>(okResult.Value);
-            Assert.Equal(id, returned.Id);
-        }
-
-        [Fact]
-        public async Task GetByIdReturnsNotFoundWhenTodoDoesNotExist()
-        {
-            // Arrange
-            _mockService.Setup(s => s.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ToDoResponse?)null);
-
-            // Act
-            var result = await _controller.GetById(Guid.NewGuid());
-
-            // Assert
-            Assert.IsType<NotFoundResult>(result.Result);
-        }
-
-        [Fact]
         public async Task CreateReturnsCreatedAtActionResult()
         {
             // Arrange
@@ -84,8 +54,7 @@ namespace ToDoApi.Tests.Controllers
             var result = await _controller.Create(request);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-            Assert.Equal(nameof(ToDoController.GetById), createdResult.ActionName);
+            var createdResult = Assert.IsType<CreatedResult>(result.Result);
             var returned = Assert.IsType<ToDoResponse>(createdResult.Value);
             Assert.Equal(created.Id, returned.Id);
         }

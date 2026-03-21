@@ -87,12 +87,6 @@ export const todoService = {
     return parseJson(response, isToDoArray);
   },
 
-  async getById(id: string): Promise<ToDo> {
-    const response = await safeFetch(`${API_BASE_URL}/${id}`);
-    if (!response.ok) throw await httpError(response);
-    return parseJson(response, isToDo);
-  },
-
   async create(todo: Pick<ToDo, 'title' | 'description'>): Promise<ToDo> {
     const response = await safeFetch(API_BASE_URL, {
       method: 'POST',

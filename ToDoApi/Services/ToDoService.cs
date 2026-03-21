@@ -14,15 +14,6 @@ namespace ToDoApi.Services
             return mapper.Map<IEnumerable<ToDoResponse>>(todos);
         }
 
-        public async Task<ToDoResponse?> GetByIdAsync(Guid id)
-        {
-            logger.LogDebug("Fetching todo {Id}", id);
-            var todo = await repository.GetByIdAsync(id);
-            if (todo is null)
-                logger.LogWarning("Todo {Id} not found", id);
-            return todo is null ? null : mapper.Map<ToDoResponse>(todo);
-        }
-
         public async Task<ToDoResponse> CreateAsync(CreateToDoRequest request)
         {
             var todo = mapper.Map<ToDo.DataAccess.ToDo>(request);

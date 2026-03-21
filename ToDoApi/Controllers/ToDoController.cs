@@ -15,23 +15,13 @@ namespace ToDoApi.Controllers
             return Ok(await service.GetAllAsync());
         }
 
-        [HttpGet("{id:guid}")]
-        [ProducesResponseType<ToDoResponse>(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ToDoResponse>> GetById(Guid id)
-        {
-            var todo = await service.GetByIdAsync(id);
-            return todo is null ? NotFound() : Ok(todo);
-        }
-
         [HttpPost]
         [ProducesResponseType<ToDoResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ToDoResponse>> Create(CreateToDoRequest request)
         {
             var created = await service.CreateAsync(request);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+            return Created((string?)null, created);
         }
 
         [HttpPut("{id:guid}")]
