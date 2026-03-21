@@ -12,6 +12,7 @@ namespace ToDo.DataAccess.Tests
 {
     public class ToDoRepositoryTests
     {
+        private readonly Guid _userId = Guid.NewGuid();
         private static AppDbContext GetInMemoryDbContext(string? dbName = null)
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -49,7 +50,7 @@ namespace ToDo.DataAccess.Tests
             // Arrange
             var context = GetInMemoryDbContext();
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
-            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Test Add", Description = "Testing Add" };
+            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), UserId = _userId, Title = "Test Add", Description = "Testing Add" };
 
             // Act
             await repository.AddAsync(todo);
@@ -67,11 +68,11 @@ namespace ToDo.DataAccess.Tests
             var context = GetInMemoryDbContext();
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var id = Guid.NewGuid();
-            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Test Get" });
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, UserId = _userId, Title = "Test Get" });
             await context.SaveChangesAsync();
 
             // Act
-            var result = await repository.GetByIdAsync(id);
+            var result = await repository.GetByIdAsync(id, _userId);
 
             // Assert
             Assert.NotNull(result);
@@ -87,7 +88,7 @@ namespace ToDo.DataAccess.Tests
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
 
             // Act
-            var result = await repository.GetByIdAsync(Guid.NewGuid());
+            var result = await repository.GetByIdAsync(Guid.NewGuid(), _userId);
 
             // Assert
             Assert.Null(result);
@@ -100,13 +101,13 @@ namespace ToDo.DataAccess.Tests
             var context = GetInMemoryDbContext();
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             context.ToDos.AddRange(
-                new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Task 1" },
-                new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Task 2" }
+                new DataAccess.ToDo { Id = Guid.NewGuid(), UserId = _userId, Title = "Task 1" },
+                new DataAccess.ToDo { Id = Guid.NewGuid(), UserId = _userId, Title = "Task 2" }
             );
             await context.SaveChangesAsync();
 
             // Act
-            var result = await repository.GetAllAsync();
+            var result = await repository.GetAllAsync(_userId);
 
             // Assert
             Assert.Equal(2, result.Count());
@@ -118,7 +119,7 @@ namespace ToDo.DataAccess.Tests
             // Arrange
             var context = GetInMemoryDbContext();
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
-            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Old Title" };
+            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), UserId = _userId, Title = "Old Title" };
             context.ToDos.Add(todo);
             await context.SaveChangesAsync();
 
@@ -139,11 +140,11 @@ namespace ToDo.DataAccess.Tests
             var context = GetInMemoryDbContext();
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var id = Guid.NewGuid();
-            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "To Delete" });
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, UserId = _userId, Title = "To Delete" });
             await context.SaveChangesAsync();
 
             // Act
-            var deleted = await repository.DeleteAsync(id);
+            var deleted = await repository.DeleteAsync(id, _userId);
 
             // Assert
             Assert.True(deleted);
@@ -159,7 +160,7 @@ namespace ToDo.DataAccess.Tests
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
 
             // Act
-            var deleted = await repository.DeleteAsync(Guid.NewGuid());
+            var deleted = await repository.DeleteAsync(Guid.NewGuid(), _userId);
 
             // Assert
             Assert.False(deleted);
@@ -172,11 +173,11 @@ namespace ToDo.DataAccess.Tests
             var context = GetInMemoryDbContext();
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var id = Guid.NewGuid();
-            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Status Test" });
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, UserId = _userId, Title = "Status Test" });
             await context.SaveChangesAsync();
 
             // Act
-            var changed = await repository.ChangeStatusAsync(id, true);
+            var changed = await repository.ChangeStatusAsync(id, _userId, true);
 
             // Assert
             Assert.True(changed);
@@ -192,11 +193,11 @@ namespace ToDo.DataAccess.Tests
             var context = GetInMemoryDbContext();
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
             var id = Guid.NewGuid();
-            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Status Test 2", FinishedAt = DateTime.UtcNow });
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, UserId = _userId, Title = "Status Test 2", FinishedAt = DateTime.UtcNow });
             await context.SaveChangesAsync();
 
             // Act
-            var changed = await repository.ChangeStatusAsync(id, false);
+            var changed = await repository.ChangeStatusAsync(id, _userId, false);
 
             // Assert
             Assert.True(changed);
@@ -213,7 +214,7 @@ namespace ToDo.DataAccess.Tests
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
 
             // Act
-            var changed = await repository.ChangeStatusAsync(Guid.NewGuid(), true);
+            var changed = await repository.ChangeStatusAsync(Guid.NewGuid(), _userId, true);
 
             // Assert
             Assert.False(changed);
@@ -224,7 +225,7 @@ namespace ToDo.DataAccess.Tests
         {
             var context = GetThrowingDbContext();
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
-            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Fail" };
+            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), UserId = _userId, Title = "Fail" };
 
             await Assert.ThrowsAsync<DbUpdateException>(() => repository.AddAsync(todo));
         }
@@ -233,7 +234,7 @@ namespace ToDo.DataAccess.Tests
         public async Task UpdateAsync_PropagatesException_WhenSaveChangesFails()
         {
             var context = GetThrowingDbContext();
-            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), Title = "Original" };
+            var todo = new DataAccess.ToDo { Id = Guid.NewGuid(), UserId = _userId, Title = "Original" };
             context.ToDos.Add(todo);
             await context.BaseSaveChangesAsync();
 
@@ -248,12 +249,12 @@ namespace ToDo.DataAccess.Tests
         {
             var context = GetThrowingDbContext();
             var id = Guid.NewGuid();
-            context.ToDos.Add(new DataAccess.ToDo { Id = id, Title = "Status Fail" });
+            context.ToDos.Add(new DataAccess.ToDo { Id = id, UserId = _userId, Title = "Status Fail" });
             await context.BaseSaveChangesAsync();
 
             var repository = new ToDoRepository(context, NullLogger<ToDoRepository>.Instance);
 
-            await Assert.ThrowsAsync<DbUpdateException>(() => repository.ChangeStatusAsync(id, true));
+            await Assert.ThrowsAsync<DbUpdateException>(() => repository.ChangeStatusAsync(id, _userId, true));
         }
 
         [Fact]
@@ -266,10 +267,10 @@ namespace ToDo.DataAccess.Tests
             var repoB = new ToDoRepository(contextB, NullLogger<ToDoRepository>.Instance);
 
             var id = Guid.NewGuid();
-            await repoA.AddAsync(new DataAccess.ToDo { Id = id, Title = "Concurrent" });
+            await repoA.AddAsync(new DataAccess.ToDo { Id = id, UserId = _userId, Title = "Concurrent" });
 
-            var firstDelete = await repoA.DeleteAsync(id);
-            var secondDelete = await repoB.DeleteAsync(id);
+            var firstDelete = await repoA.DeleteAsync(id, _userId);
+            var secondDelete = await repoB.DeleteAsync(id, _userId);
 
             Assert.True(firstDelete);
             Assert.False(secondDelete);

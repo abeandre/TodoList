@@ -6,11 +6,11 @@ namespace ToDo.DataAccess.Repositories
 {
     public interface IToDoRepository
     {
-        Task<ToDo?> GetByIdAsync(Guid id);
-        Task<IEnumerable<ToDo>> GetAllAsync();
+        Task<ToDo?> GetByIdAsync(Guid id, Guid userId);
+        Task<IEnumerable<ToDo>> GetAllAsync(Guid userId);
         Task AddAsync(ToDo todo);
         Task UpdateAsync(ToDo todo);
-        Task<bool> DeleteAsync(Guid id);
-        Task<bool> ChangeStatusAsync(Guid id, bool isCompleted);
+        Task<bool> DeleteAsync(Guid id, Guid userId);
+        Task<bool> ChangeStatusAsync(Guid id, Guid userId, bool isCompleted);
     }
 }

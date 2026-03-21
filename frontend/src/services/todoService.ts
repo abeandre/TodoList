@@ -1,6 +1,7 @@
 import type { ToDo } from '@/types/todo';
+import { authService } from './authService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/todo';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 // abort requests that stall longer than this
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -35,14 +36,35 @@ async function httpError(response: Response, overrides: Partial<Record<number, s
 }
 
 // wraps fetch with a timeout; throws a user-friendly error on stall or network failure
-async function safeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+async function safeFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  const token = authService.getToken();
+  const headers = new Headers(init.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   try {
-    return await fetch(input, { ...init, signal: controller.signal });
+    const response = await fetch(input, {
+      ...init,
+      headers,
+      signal: controller.signal
+    });
+
+    if (response.status === 401) {
+      authService.clearToken();
+      window.dispatchEvent(new Event('unauthorized-error'));
+      throw new Error('Your session has expired. Please log in again.');
+    }
+
+    return response;
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError')
       throw new Error('The request timed out — please try again.');
+    if (err instanceof Error && err.message.includes('session has expired'))
+      throw err;
     throw new Error('Cannot reach the server — check your connection and try again.');
   } finally {
     clearTimeout(timeoutId);
@@ -80,7 +102,7 @@ async function parseJson<T>(response: Response, guard: (val: unknown) => val is 
 
 export const todoService = {
   async getAll(): Promise<ToDo[]> {
-    const response = await safeFetch(API_BASE_URL);
+    const response = await safeFetch(`${API_BASE_URL}/todo`);
     if (!response.ok) throw await httpError(response, {
       500: 'Server error while loading tasks — try refreshing the page.',
     });
@@ -88,7 +110,7 @@ export const todoService = {
   },
 
   async create(todo: Pick<ToDo, 'title' | 'description'>): Promise<ToDo> {
-    const response = await safeFetch(API_BASE_URL, {
+    const response = await safeFetch(`${API_BASE_URL}/todo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(todo),
@@ -101,7 +123,7 @@ export const todoService = {
   },
 
   async update(id: string, data: Pick<ToDo, 'title' | 'description'>): Promise<void> {
-    const response = await safeFetch(`${API_BASE_URL}/${id}`, {
+    const response = await safeFetch(`${API_BASE_URL}/todo/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -114,7 +136,7 @@ export const todoService = {
   },
 
   async changeStatus(id: string, isCompleted: boolean): Promise<void> {
-    const response = await safeFetch(`${API_BASE_URL}/${id}/status`, {
+    const response = await safeFetch(`${API_BASE_URL}/todo/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isCompleted }),
@@ -126,7 +148,7 @@ export const todoService = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await safeFetch(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
+    const response = await safeFetch(`${API_BASE_URL}/todo/${id}`, { method: 'DELETE' });
     if (!response.ok) throw await httpError(response, {
       404: 'This task has already been deleted.',
       500: 'Server error while deleting the task — please try again.',

@@ -18,14 +18,14 @@ namespace ToDo.DataAccess.Repositories
             _logger = logger;
         }
 
-        public async Task<DataAccess.ToDo?> GetByIdAsync(Guid id)
+        public async Task<DataAccess.ToDo?> GetByIdAsync(Guid id, Guid userId)
         {
-            return await _context.ToDos.FindAsync(id);
+            return await _context.ToDos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
         }
 
-        public async Task<IEnumerable<DataAccess.ToDo>> GetAllAsync()
+        public async Task<IEnumerable<DataAccess.ToDo>> GetAllAsync(Guid userId)
         {
-            return await _context.ToDos.ToListAsync();
+            return await _context.ToDos.Where(t => t.UserId == userId).ToListAsync();
         }
 
         public async Task AddAsync(DataAccess.ToDo todo)
@@ -42,9 +42,9 @@ namespace ToDo.DataAccess.Repositories
             _logger.LogDebug("Persisted update for todo {Id}", todo.Id);
         }
 
-        public async Task<bool> DeleteAsync(Guid id)
+        public async Task<bool> DeleteAsync(Guid id, Guid userId)
         {
-            var todo = await _context.ToDos.FindAsync(id);
+            var todo = await GetByIdAsync(id, userId);
             if (todo is null)
             {
                 _logger.LogDebug("DeleteAsync: todo {Id} not found", id);
@@ -56,9 +56,9 @@ namespace ToDo.DataAccess.Repositories
             return true;
         }
 
-        public async Task<bool> ChangeStatusAsync(Guid id, bool isCompleted)
+        public async Task<bool> ChangeStatusAsync(Guid id, Guid userId, bool isCompleted)
         {
-            var todo = await GetByIdAsync(id);
+            var todo = await GetByIdAsync(id, userId);
             if (todo == null)
             {
                 _logger.LogDebug("ChangeStatusAsync: todo {Id} not found", id);

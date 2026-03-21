@@ -4,6 +4,12 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using System.Net.Http.Headers;
 using ToDo.DataAccess;
 using ToDoApi.Models;
 
@@ -13,12 +19,19 @@ public class ToDoControllerIntegrationTests : IDisposable
 {
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
+    private readonly Guid _testUserId = Guid.NewGuid();
+
+    private const string TestJwtKey = "IntegrationTestKey-MustBe32CharsOrMore!!";
 
     public ToDoControllerIntegrationTests()
     {
         var dbName = Guid.NewGuid().ToString();
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, cfg) =>
+                cfg.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:Key"] = TestJwtKey }));
+
             builder.ConfigureServices(services =>
             {
                 var toRemove = services
@@ -32,9 +45,26 @@ public class ToDoControllerIntegrationTests : IDisposable
                     options.UseInMemoryDatabase(dbName)
                            .ConfigureWarnings(w =>
                                w.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
-            }));
+            });
+        });
 
         _client = _factory.CreateClient();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GenerateToken());
+    }
+
+    private string GenerateToken()
+    {
+        var key = Encoding.UTF8.GetBytes(TestJwtKey);
+        var handler = new JwtSecurityTokenHandler();
+        var descriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[] { new Claim(JwtRegisteredClaimNames.Sub, _testUserId.ToString()) }),
+            Expires = DateTime.UtcNow.AddHours(1),
+            Issuer = "ToDoApi",
+            Audience = "ToDoAppClients",
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+        return handler.WriteToken(handler.CreateToken(descriptor));
     }
 
     public void Dispose()

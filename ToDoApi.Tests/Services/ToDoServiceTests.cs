@@ -19,6 +19,7 @@ namespace ToDoApi.Tests.Services
         private readonly Mock<IToDoRepository> _mockRepo;
         private readonly IMapper _mapper;
         private readonly ToDoService _service;
+        private readonly Guid _userId = Guid.NewGuid();
 
         public ToDoServiceTests()
         {
@@ -40,9 +41,9 @@ namespace ToDoApi.Tests.Services
                 new() { Id = Guid.NewGuid(), Title = "First", Description = "Desc 1", CreatedAt = DateTime.UtcNow },
                 new() { Id = Guid.NewGuid(), Title = "Second", Description = "Desc 2", CreatedAt = DateTime.UtcNow }
             };
-            _mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(todos);
+            _mockRepo.Setup(r => r.GetAllAsync(_userId)).ReturnsAsync(todos);
 
-            var result = (await _service.GetAllAsync()).ToList();
+            var result = (await _service.GetAllAsync(_userId)).ToList();
 
             Assert.Equal(2, result.Count);
             Assert.Equal(todos[0].Id, result[0].Id);
@@ -53,9 +54,9 @@ namespace ToDoApi.Tests.Services
         [Fact]
         public async Task GetAllAsyncReturnsEmptyWhenNoTodos()
         {
-            _mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<ToDo.DataAccess.ToDo>());
+            _mockRepo.Setup(r => r.GetAllAsync(_userId)).ReturnsAsync(new List<ToDo.DataAccess.ToDo>());
 
-            var result = await _service.GetAllAsync();
+            var result = await _service.GetAllAsync(_userId);
 
             Assert.Empty(result);
         }
@@ -68,7 +69,7 @@ namespace ToDoApi.Tests.Services
             var request = new CreateToDoRequest { Title = "New Todo", Description = "Some desc" };
             _mockRepo.Setup(r => r.AddAsync(It.IsAny<ToDo.DataAccess.ToDo>())).Returns(Task.CompletedTask);
 
-            var result = await _service.CreateAsync(request);
+            var result = await _service.CreateAsync(_userId, request);
 
             Assert.Equal("New Todo", result.Title);
             Assert.Equal("Some desc", result.Description);
@@ -81,7 +82,7 @@ namespace ToDoApi.Tests.Services
             var request = new CreateToDoRequest { Title = "Todo" };
             _mockRepo.Setup(r => r.AddAsync(It.IsAny<ToDo.DataAccess.ToDo>())).Returns(Task.CompletedTask);
 
-            var result = await _service.CreateAsync(request);
+            var result = await _service.CreateAsync(_userId, request);
 
             Assert.NotEqual(Guid.Empty, result.Id);
         }
@@ -93,7 +94,7 @@ namespace ToDoApi.Tests.Services
             var request = new CreateToDoRequest { Title = "Todo" };
             _mockRepo.Setup(r => r.AddAsync(It.IsAny<ToDo.DataAccess.ToDo>())).Returns(Task.CompletedTask);
 
-            var result = await _service.CreateAsync(request);
+            var result = await _service.CreateAsync(_userId, request);
 
             Assert.True(result.CreatedAt >= before);
             Assert.True(result.CreatedAt <= DateTime.UtcNow);
@@ -107,7 +108,7 @@ namespace ToDoApi.Tests.Services
             var request = new CreateToDoRequest { Title = "Todo" };
             _mockRepo.Setup(r => r.AddAsync(It.IsAny<ToDo.DataAccess.ToDo>())).Returns(Task.CompletedTask);
 
-            var result = await _service.CreateAsync(request);
+            var result = await _service.CreateAsync(_userId, request);
 
             Assert.Equal(string.Empty, result.Description);
         }
@@ -117,9 +118,9 @@ namespace ToDoApi.Tests.Services
         [Fact]
         public async Task UpdateAsyncReturnsFalse_WhenNotFound()
         {
-            _mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ToDo.DataAccess.ToDo?)null);
+            _mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), _userId)).ReturnsAsync((ToDo.DataAccess.ToDo?)null);
 
-            var result = await _service.UpdateAsync(Guid.NewGuid(), new UpdateToDoRequest { Title = "x" });
+            var result = await _service.UpdateAsync(Guid.NewGuid(), _userId, new UpdateToDoRequest { Title = "x" });
 
             Assert.False(result);
             _mockRepo.Verify(r => r.UpdateAsync(It.IsAny<ToDo.DataAccess.ToDo>()), Times.Never);
@@ -131,10 +132,10 @@ namespace ToDoApi.Tests.Services
             var id = Guid.NewGuid();
             var existing = new ToDo.DataAccess.ToDo { Id = id, Title = "Old", Description = "Old desc" };
             var request = new UpdateToDoRequest { Title = "New", Description = "New desc" };
-            _mockRepo.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(existing);
+            _mockRepo.Setup(r => r.GetByIdAsync(id, _userId)).ReturnsAsync(existing);
             _mockRepo.Setup(r => r.UpdateAsync(existing)).Returns(Task.CompletedTask);
 
-            var result = await _service.UpdateAsync(id, request);
+            var result = await _service.UpdateAsync(id, _userId, request);
 
             Assert.True(result);
             Assert.Equal("New", existing.Title);
@@ -148,10 +149,10 @@ namespace ToDoApi.Tests.Services
             var before = DateTime.UtcNow;
             var id = Guid.NewGuid();
             var existing = new ToDo.DataAccess.ToDo { Id = id, Title = "Old" };
-            _mockRepo.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(existing);
+            _mockRepo.Setup(r => r.GetByIdAsync(id, _userId)).ReturnsAsync(existing);
             _mockRepo.Setup(r => r.UpdateAsync(existing)).Returns(Task.CompletedTask);
 
-            await _service.UpdateAsync(id, new UpdateToDoRequest { Title = "New" });
+            await _service.UpdateAsync(id, _userId, new UpdateToDoRequest { Title = "New" });
 
             Assert.True(existing.UpdatedAt >= before);
             Assert.True(existing.UpdatedAt <= DateTime.UtcNow);
@@ -163,10 +164,10 @@ namespace ToDoApi.Tests.Services
             var id = Guid.NewGuid();
             var createdAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var existing = new ToDo.DataAccess.ToDo { Id = id, Title = "Old", CreatedAt = createdAt };
-            _mockRepo.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(existing);
+            _mockRepo.Setup(r => r.GetByIdAsync(id, _userId)).ReturnsAsync(existing);
             _mockRepo.Setup(r => r.UpdateAsync(existing)).Returns(Task.CompletedTask);
 
-            await _service.UpdateAsync(id, new UpdateToDoRequest { Title = "New" });
+            await _service.UpdateAsync(id, _userId, new UpdateToDoRequest { Title = "New" });
 
             Assert.Equal(id, existing.Id);
             Assert.Equal(createdAt, existing.CreatedAt);
@@ -178,20 +179,20 @@ namespace ToDoApi.Tests.Services
         public async Task DeleteAsyncReturnsTrue_WhenFound()
         {
             var id = Guid.NewGuid();
-            _mockRepo.Setup(r => r.DeleteAsync(id)).ReturnsAsync(true);
+            _mockRepo.Setup(r => r.DeleteAsync(id, _userId)).ReturnsAsync(true);
 
-            var result = await _service.DeleteAsync(id);
+            var result = await _service.DeleteAsync(id, _userId);
 
             Assert.True(result);
-            _mockRepo.Verify(r => r.DeleteAsync(id), Times.Once);
+            _mockRepo.Verify(r => r.DeleteAsync(id, _userId), Times.Once);
         }
 
         [Fact]
         public async Task DeleteAsyncReturnsFalse_WhenNotFound()
         {
-            _mockRepo.Setup(r => r.DeleteAsync(It.IsAny<Guid>())).ReturnsAsync(false);
+            _mockRepo.Setup(r => r.DeleteAsync(It.IsAny<Guid>(), _userId)).ReturnsAsync(false);
 
-            var result = await _service.DeleteAsync(Guid.NewGuid());
+            var result = await _service.DeleteAsync(Guid.NewGuid(), _userId);
 
             Assert.False(result);
         }
@@ -201,9 +202,9 @@ namespace ToDoApi.Tests.Services
         [Fact]
         public async Task GetAllAsyncPropagatesRepositoryException()
         {
-            _mockRepo.Setup(r => r.GetAllAsync()).ThrowsAsync(new InvalidOperationException("DB error"));
+            _mockRepo.Setup(r => r.GetAllAsync(_userId)).ThrowsAsync(new InvalidOperationException("DB error"));
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetAllAsync());
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetAllAsync(_userId));
         }
 
         [Fact]
@@ -211,7 +212,7 @@ namespace ToDoApi.Tests.Services
         {
             _mockRepo.Setup(r => r.AddAsync(It.IsAny<ToDo.DataAccess.ToDo>())).ThrowsAsync(new InvalidOperationException("DB error"));
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.CreateAsync(new CreateToDoRequest { Title = "Test" }));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.CreateAsync(_userId, new CreateToDoRequest { Title = "Test" }));
         }
 
         [Fact]
@@ -219,26 +220,26 @@ namespace ToDoApi.Tests.Services
         {
             var id = Guid.NewGuid();
             var existing = new ToDo.DataAccess.ToDo { Id = id, Title = "Old" };
-            _mockRepo.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(existing);
+            _mockRepo.Setup(r => r.GetByIdAsync(id, _userId)).ReturnsAsync(existing);
             _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<ToDo.DataAccess.ToDo>())).ThrowsAsync(new InvalidOperationException("DB error"));
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.UpdateAsync(id, new UpdateToDoRequest { Title = "New" }));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.UpdateAsync(id, _userId, new UpdateToDoRequest { Title = "New" }));
         }
 
         [Fact]
         public async Task DeleteAsyncPropagatesRepositoryException()
         {
-            _mockRepo.Setup(r => r.DeleteAsync(It.IsAny<Guid>())).ThrowsAsync(new InvalidOperationException("DB error"));
+            _mockRepo.Setup(r => r.DeleteAsync(It.IsAny<Guid>(), _userId)).ThrowsAsync(new InvalidOperationException("DB error"));
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteAsync(Guid.NewGuid()));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteAsync(Guid.NewGuid(), _userId));
         }
 
         [Fact]
         public async Task ChangeStatusAsyncPropagatesRepositoryException()
         {
-            _mockRepo.Setup(r => r.ChangeStatusAsync(It.IsAny<Guid>(), It.IsAny<bool>())).ThrowsAsync(new InvalidOperationException("DB error"));
+            _mockRepo.Setup(r => r.ChangeStatusAsync(It.IsAny<Guid>(), _userId, It.IsAny<bool>())).ThrowsAsync(new InvalidOperationException("DB error"));
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ChangeStatusAsync(Guid.NewGuid(), true));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ChangeStatusAsync(Guid.NewGuid(), _userId, true));
         }
 
         // --- ChangeStatusAsync ---
@@ -247,20 +248,20 @@ namespace ToDoApi.Tests.Services
         public async Task ChangeStatusAsyncReturnsTrue_WhenFound()
         {
             var id = Guid.NewGuid();
-            _mockRepo.Setup(r => r.ChangeStatusAsync(id, true)).ReturnsAsync(true);
+            _mockRepo.Setup(r => r.ChangeStatusAsync(id, _userId, true)).ReturnsAsync(true);
 
-            var result = await _service.ChangeStatusAsync(id, true);
+            var result = await _service.ChangeStatusAsync(id, _userId, true);
 
             Assert.True(result);
-            _mockRepo.Verify(r => r.ChangeStatusAsync(id, true), Times.Once);
+            _mockRepo.Verify(r => r.ChangeStatusAsync(id, _userId, true), Times.Once);
         }
 
         [Fact]
         public async Task ChangeStatusAsyncReturnsFalse_WhenNotFound()
         {
-            _mockRepo.Setup(r => r.ChangeStatusAsync(It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(false);
+            _mockRepo.Setup(r => r.ChangeStatusAsync(It.IsAny<Guid>(), _userId, It.IsAny<bool>())).ReturnsAsync(false);
 
-            var result = await _service.ChangeStatusAsync(Guid.NewGuid(), false);
+            var result = await _service.ChangeStatusAsync(Guid.NewGuid(), _userId, false);
 
             Assert.False(result);
         }

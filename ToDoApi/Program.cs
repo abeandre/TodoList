@@ -1,13 +1,19 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using System.Text;
 using ToDo.DataAccess;
 using ToDo.DataAccess.Repositories;
 using ToDoApi.Filters;
 using ToDoApi.Mappings;
 using ToDoApi.Services;
 
+// JWT signing key must be provided via environment variable or user secrets — never in source control.
+// Set via env var:       JWT__Key=<32+ char secret>
+// Set via user secrets:  dotnet user-secrets set "Jwt:Key" "<32+ char secret>"
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers(options =>
@@ -20,7 +26,31 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IToDoRepository, ToDoRepository>();
 builder.Services.AddScoped<IToDoService, ToDoService>();
-builder.Services.AddAutoMapper(cfg => cfg.AddProfile<ToDoMappingProfile>());
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddAutoMapper(cfg => 
+{
+    cfg.AddProfile<ToDoMappingProfile>();
+    cfg.AddProfile<UserMappingProfile>();
+});
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? string.Empty))
+        };
+    });
+    
+builder.Services.AddAuthorization();
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
@@ -64,6 +94,10 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 
 app.UseCors("FrontendPolicy");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
