@@ -20,9 +20,8 @@ vi.mock('@/services/authService', () => ({
     logout: vi.fn(),
     getUserId: vi.fn().mockReturnValue('user-123'),
     deleteAccount: vi.fn(),
-    getToken: vi.fn().mockReturnValue('fake-token'),
     isAuthenticated: vi.fn().mockReturnValue(true),
-    clearToken: vi.fn(),
+    clearUser: vi.fn(),
   }
 }));
 
@@ -47,7 +46,6 @@ describe('HomeView.vue (ToDo List)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (authService.getUserId as any).mockReturnValue('user-123');
-    (authService.getToken as any).mockReturnValue('fake-token');
     (authService.isAuthenticated as any).mockReturnValue(true);
   });
 

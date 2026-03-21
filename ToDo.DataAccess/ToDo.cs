@@ -3,12 +3,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ToDo.DataAccess
 {
-    public class ToDo
+    public class ToDo : AuditableEntity
     {
-        [Key]
-        public Guid Id { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
         public DateTime? FinishedAt { get; set; }
 
         [Required]

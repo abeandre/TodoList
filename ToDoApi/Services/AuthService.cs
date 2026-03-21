@@ -14,12 +14,18 @@ namespace ToDoApi.Services
 {
     public class AuthService(IUserRepository userRepository, IConfiguration configuration, ILogger<AuthService> logger) : IAuthService
     {
+        // Dedicated EventIds let log aggregators (Application Insights, Grafana, Splunk, etc.)
+        // filter and alert on security events without parsing free-text messages.
+        private static readonly EventId EvtAuthFailedNotFound    = new(1001, "AuthFailedUserNotFound");
+        private static readonly EventId EvtAuthFailedBadPassword = new(1002, "AuthFailedBadPassword");
+        private static readonly EventId EvtAuthSucceeded         = new(1003, "AuthSucceeded");
+
         public async Task<AuthResponse?> AuthenticateAsync(AuthRequest request)
         {
             var user = await userRepository.GetUserByEmailAsync(request.Email);
             if (user == null)
             {
-                logger.LogWarning("Authentication failed for email: {Email}. User not found.", request.Email);
+                logger.LogWarning(EvtAuthFailedNotFound, "Authentication failed for email: {Email}. User not found.", request.Email);
                 return null;
             }
 
@@ -30,13 +36,13 @@ namespace ToDoApi.Services
 
             if (!CryptographicOperations.FixedTimeEquals(inputHash, storedHash))
             {
-                logger.LogWarning("Authentication failed for email: {Email}. Invalid password.", request.Email);
+                logger.LogWarning(EvtAuthFailedBadPassword, "Authentication failed for email: {Email}. Invalid password.", request.Email);
                 return null;
             }
 
             var jwtString = GenerateToken(user.Id, user.Name, user.Email);
 
-            logger.LogInformation("Authentication successful for user: {Id}", user.Id);
+            logger.LogInformation(EvtAuthSucceeded, "Authentication successful for user: {Id}", user.Id);
 
             return new AuthResponse
             {
@@ -65,7 +71,7 @@ namespace ToDoApi.Services
                     new Claim(JwtRegisteredClaimNames.Email, email),
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
                 }),
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddHours(1),
                 Issuer = configuration["Jwt:Issuer"],
                 Audience = configuration["Jwt:Audience"],
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

@@ -27,6 +27,7 @@ namespace ToDoApi.Controllers
             {
                 var created = await service.CreateAsync(request);
                 created.Token = authService.GenerateToken(created.Id, created.Name, created.Email);
+                AppendAuthCookie(created.Token);
                 return Created((string?)null, created);
             }
             catch (ArgumentException ex)
@@ -66,7 +67,21 @@ namespace ToDoApi.Controllers
             if (!Guid.TryParse(callerIdStr, out var callerId) || callerId != id)
                 return Forbid();
 
-            return await service.DeleteAsync(id) ? NoContent() : NotFound();
+            if (!await service.DeleteAsync(id))
+                return NotFound();
+
+            Response.Cookies.Delete("jwt");
+            return NoContent();
         }
+
+        private void AppendAuthCookie(string token) =>
+            Response.Cookies.Append("jwt", token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddHours(1),
+                Path = "/"
+            });
     }
 }

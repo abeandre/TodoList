@@ -21,8 +21,8 @@ namespace ToDoApi.Services
 
             var user = mapper.Map<User>(request);
             user.Id = Guid.NewGuid();
-            user.CreatedDate = DateTime.UtcNow;
-            user.LastModifiedDate = DateTime.UtcNow;
+            user.CreatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
 
             var saltBytes = new byte[32];
             RandomNumberGenerator.Fill(saltBytes);
@@ -53,7 +53,7 @@ namespace ToDoApi.Services
             }
 
             mapper.Map(request, user);
-            user.LastModifiedDate = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
 
             if (!string.IsNullOrEmpty(request.Password))
             {

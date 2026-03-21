@@ -55,13 +55,11 @@ public class AuthControllerIntegrationTests : IDisposable
     public async Task Login_ReturnsOk_WithJwtToken_WhenCredentialsAreValid()
     {
         // Arrange
-        // 1. Create a user first using the UserController
         var createResponse = await _client.PostAsJsonAsync("/api/user",
             new CreateUserRequest { Name = "Auth Setup", Email = "valid@test.com", Password = "correctpassword" });
         createResponse.EnsureSuccessStatusCode();
 
         // Act
-        // 2. Attempt to login
         var loginResponse = await _client.PostAsJsonAsync("/api/auth/login",
             new AuthRequest { Email = "valid@test.com", Password = "correctpassword" });
 
@@ -69,9 +67,11 @@ public class AuthControllerIntegrationTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
         var authResult = await loginResponse.Content.ReadFromJsonAsync<AuthResponse>();
         Assert.NotNull(authResult);
-        Assert.False(string.IsNullOrEmpty(authResult.Token));
         Assert.Equal("Auth Setup", authResult.UserName);
         Assert.Equal("valid@test.com", authResult.Email);
+        // JWT is delivered via httpOnly cookie, not the response body
+        var setCookies = loginResponse.Headers.GetValues("Set-Cookie");
+        Assert.Contains(setCookies, v => v.StartsWith("jwt=") && v.Contains("httponly", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

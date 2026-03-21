@@ -33,8 +33,8 @@ namespace ToDo.DataAccess.Tests
                 Email = "john@example.com", 
                 Salt = "salt123", 
                 HashedPassword = "hashedpassword123",
-                CreatedDate = DateTime.UtcNow,
-                LastModifiedDate = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             // Act

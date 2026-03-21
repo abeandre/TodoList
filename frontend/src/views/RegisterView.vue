@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { authService } from '@/services/authService';
+import { Routes } from '@/router/routes';
 
 const router = useRouter();
 const username = ref('');
@@ -19,7 +20,7 @@ const handleRegister = async () => {
       email: email.value,
       password: password.value,
     });
-    router.push('/');
+    router.push({ name: Routes.Home });
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Registration failed. Please try again.';
   } finally {

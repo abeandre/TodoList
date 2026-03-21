@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Text;
 using System.Threading.RateLimiting;
+using System.Threading.Tasks;
 using ToDo.DataAccess;
 using ToDo.DataAccess.Repositories;
 using ToDoApi.Filters;
@@ -17,6 +18,10 @@ using ToDoApi.Services;
 // Set via env var:       JWT__Key=<32+ char secret>
 // Set via user secrets:  dotnet user-secrets set "Jwt:Key" "<32+ char secret>"
 var builder = WebApplication.CreateBuilder(args);
+
+// Global request body size cap; override with [RequestSizeLimit] on endpoints that need larger payloads.
+builder.WebHost.ConfigureKestrel(options =>
+    options.Limits.MaxRequestBodySize = 1 * 1024 * 1024); // 1 MB
 
 builder.Services.AddControllers(options =>
     options.Filters.Add<SanitizeStringsFilter>());
@@ -49,6 +54,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? string.Empty))
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // Fall back to httpOnly cookie when no Authorization header is present
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                if (string.IsNullOrEmpty(authHeader))
+                    context.Token = context.Request.Cookies["jwt"];
+                return Task.CompletedTask;
+            }
         };
     });
     
@@ -85,15 +101,34 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 
-// explicit CORS policy; populate Cors:AllowedOrigins in appsettings per environment
+// HSTS: instruct browsers to only contact this host over HTTPS for one year.
+// Enable Preload only after submitting to the HSTS preload list (https://hstspreload.org).
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+});
+
+// explicit CORS policy; populate Cors:AllowedOrigins in appsettings per environment.
+// In production set via environment variable:  CORS__AllowedOrigins__0=https://app.example.com
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
 builder.Services.AddCors(options =>
     options.AddPolicy("FrontendPolicy", policy =>
         policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod()));
+            .AllowAnyMethod()
+            .AllowCredentials()));
 
 var app = builder.Build();
+
+// Warn loudly at startup when CORS origins are not configured in non-Development environments.
+// All cross-origin requests will be rejected until CORS__AllowedOrigins__0 is set.
+if (!app.Environment.IsDevelopment() && allowedOrigins.Length == 0)
+    app.Logger.LogCritical(
+        "Cors:AllowedOrigins is empty. Set at least one allowed origin via the " +
+        "CORS__AllowedOrigins__0 environment variable (e.g. https://app.example.com). " +
+        "A wildcard origin cannot be used when credentials are enabled.");
 
 // global exception handler; returns RFC 7807 ProblemDetails, hides internals in production
 app.UseExceptionHandler(errorApp =>
@@ -119,9 +154,12 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-// HTTPS redirect only outside development to avoid breaking HTTP-only dev/test flows
+// HSTS and HTTPS redirect only outside development to avoid breaking HTTP-only dev/test flows
 if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
     app.UseHttpsRedirection();
+}
 
 app.UseCors("FrontendPolicy");
 app.UseRateLimiter();

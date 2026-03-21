@@ -22,6 +22,10 @@ namespace ToDoApi.Tests.Controllers
             _mockService = new Mock<IUserService>();
             _mockAuthService = new Mock<IAuthService>();
             _controller = new UserController(_mockService.Object, _mockAuthService.Object);
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            };
         }
 
         private static ControllerContext MakeContext(Guid userId)
@@ -47,7 +51,8 @@ namespace ToDoApi.Tests.Controllers
             var createdResult = Assert.IsType<CreatedResult>(result.Result);
             var returned = Assert.IsType<UserResponse>(createdResult.Value);
             Assert.Equal(created.Id, returned.Id);
-            Assert.Equal("dummy.jwt.token", returned.Token);
+            // JWT is delivered via httpOnly cookie, not the response body
+            Assert.True(_controller.HttpContext.Response.Headers.ContainsKey("Set-Cookie"));
         }
 
         [Fact]
@@ -61,8 +66,8 @@ namespace ToDoApi.Tests.Controllers
             var result = await _controller.Create(request);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-            Assert.Equal("Email is already registered", badRequestResult.Value);
+            var objectResult = Assert.IsType<ObjectResult>(result.Result);
+            Assert.Equal(StatusCodes.Status400BadRequest, objectResult.StatusCode);
         }
 
         [Fact]
@@ -140,8 +145,8 @@ namespace ToDoApi.Tests.Controllers
             var result = await _controller.Update(id, request);
 
             // Assert
-            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("Email is already registered", badRequest.Value);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status400BadRequest, objectResult.StatusCode);
         }
 
         [Fact]

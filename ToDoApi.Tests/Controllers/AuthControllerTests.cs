@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ToDoApi.Controllers;
@@ -17,6 +18,10 @@ namespace ToDoApi.Tests.Controllers
         {
             _mockService = new Mock<IAuthService>();
             _controller = new AuthController(_mockService.Object);
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            };
         }
 
         [Fact]
@@ -33,8 +38,9 @@ namespace ToDoApi.Tests.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var returned = Assert.IsType<AuthResponse>(okResult.Value);
-            Assert.Equal("jwt.token.here", returned.Token);
             Assert.Equal("Test", returned.UserName);
+            // JWT is delivered via httpOnly cookie, not the response body
+            Assert.True(_controller.HttpContext.Response.Headers.ContainsKey("Set-Cookie"));
         }
 
         [Fact]

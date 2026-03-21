@@ -70,3 +70,64 @@ cd frontend
 npx playwright test
 ```
 *(Optionally, you can append `--project=chromium` if you only wish to test the Chrome engine).*
+
+---
+
+## Production Setup
+
+### Required environment variables
+
+#### Backend (`ToDoApi`)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `JWT__Key` | JWT signing secret — minimum 32 characters, never commit to source control | `openssl rand -base64 32` |
+| `CORS__AllowedOrigins__0` | Allowed frontend origin (repeat with `__1`, `__2` for multiple) | `https://app.example.com` |
+
+Set via shell environment or a secrets manager:
+```bash
+export JWT__Key="$(openssl rand -base64 32)"
+export CORS__AllowedOrigins__0="https://app.example.com"
+dotnet run --environment Production
+```
+
+Or via `dotnet user-secrets` for local development:
+```bash
+cd ToDoApi
+dotnet user-secrets set "Jwt:Key" "<32+ char secret>"
+```
+
+#### Frontend (`frontend`)
+
+Copy `.env.example` to `.env.production` and fill in values:
+```bash
+cp frontend/.env.example frontend/.env.production
+# Edit .env.production — set VITE_API_BASE_URL to your production API URL
+```
+
+> `.env.production` is listed in `.gitignore` — never commit it.
+
+### HTTPS
+
+- The API enforces HTTPS redirection and HSTS (`Strict-Transport-Security: max-age=31536000; includeSubDomains`) in non-Development environments.
+- Terminate TLS at a reverse proxy (nginx, Caddy, Azure Front Door, etc.) and forward to the Kestrel process.
+- Once your domain is stable, consider adding it to the [HSTS preload list](https://hstspreload.org) and setting `options.Preload = true` in `Program.cs`.
+
+### Database
+
+The current implementation uses EF Core's **in-memory database** (suitable for demos only). For production:
+1. Replace `UseInMemoryDatabase` in `Program.cs` with a real provider (e.g. `UseSqlServer`, `UseNpgsql`).
+2. Add the corresponding NuGet package.
+3. Run `dotnet ef database update` to apply migrations.
+
+### OpenAPI spec
+
+The project generates `ToDoApi/openapi.json` at build time via `Microsoft.Extensions.ApiDescription.Server`. Commit this file so frontend teams and CI pipelines always have an up-to-date contract:
+
+```bash
+cd ToDoApi
+dotnet build          # produces / updates openapi.json
+git add openapi.json
+```
+
+The interactive Scalar UI is available at `/scalar/v1` in Development mode only.

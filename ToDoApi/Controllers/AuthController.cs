@@ -1,4 +1,6 @@
+using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,6 +14,7 @@ namespace ToDoApi.Controllers
     public class AuthController(IAuthService authService) : ControllerBase
     {
         [HttpPost("login")]
+        [AllowAnonymous]
         [EnableRateLimiting("login")]
         [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -25,7 +28,27 @@ namespace ToDoApi.Controllers
                 return Unauthorized(new { Message = "Invalid email or password" });
             }
 
+            AppendAuthCookie(response.Token);
             return Ok(response);
         }
+
+        [HttpPost("logout")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public ActionResult Logout()
+        {
+            Response.Cookies.Delete("jwt");
+            return NoContent();
+        }
+
+        private void AppendAuthCookie(string token) =>
+            Response.Cookies.Append("jwt", token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddHours(1),
+                Path = "/"
+            });
     }
 }

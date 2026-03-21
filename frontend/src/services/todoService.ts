@@ -40,21 +40,15 @@ async function safeFetch(input: RequestInfo | URL, init: RequestInit = {}): Prom
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  const token = authService.getToken();
-  const headers = new Headers(init.headers);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
   try {
     const response = await fetch(input, {
       ...init,
-      headers,
+      credentials: 'include',
       signal: controller.signal
     });
 
     if (response.status === 401) {
-      authService.clearToken();
+      authService.clearUser();
       window.dispatchEvent(new Event('unauthorized-error'));
       throw new Error('Your session has expired. Please log in again.');
     }

@@ -6,6 +6,7 @@ import { authService } from '@/services/authService';
 import type { ToDo, ISODateTime } from '@/types/todo';
 import ToDoForm from '@/components/ToDoForm.vue';
 import ToDoItem from '@/components/ToDoItem.vue';
+import { Routes } from '@/router/routes';
 
 const router = useRouter();
 
@@ -120,9 +121,9 @@ const cancelEdit = () => {
   showForm.value = false;
 };
 
-const handleLogout = () => {
-  authService.logout();
-  router.push('/login');
+const handleLogout = async () => {
+  try { await authService.logout(); } catch { /* ignore — still redirect */ }
+  router.push({ name: Routes.Login });
 };
 
 const showDeleteModal = ref(false);
@@ -136,8 +137,7 @@ const handleDeleteAccount = async () => {
   deleteError.value = null;
   try {
     await authService.deleteAccount(userId);
-    authService.logout();
-    router.push('/register');
+    router.push({ name: Routes.Register });
   } catch (err) {
     deleteError.value = err instanceof Error ? err.message : 'Could not delete account — please try again.';
     deleting.value = false;

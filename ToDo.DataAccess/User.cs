@@ -1,14 +1,10 @@
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace ToDo.DataAccess
 {
-    public class User
+    public class User : AuditableEntity
     {
-        [Key]
-        public Guid Id { get; set; }
-
         [Required]
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
@@ -24,8 +20,6 @@ namespace ToDo.DataAccess
         [Required]
         [MaxLength(300)]
         public string HashedPassword { get; set; } = string.Empty;
-        public DateTime CreatedDate { get; set; }
-        public DateTime LastModifiedDate { get; set; }
 
         public ICollection<ToDo> ToDos { get; set; } = new List<ToDo>();
     }

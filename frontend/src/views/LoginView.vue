@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { authService } from '@/services/authService';
+import { Routes } from '@/router/routes';
 
 const router = useRouter();
 const email = ref('');
@@ -17,7 +18,7 @@ const handleLogin = async () => {
       email: email.value,
       password: password.value,
     });
-    router.push('/');
+    router.push({ name: Routes.Home });
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Login failed. Please try again.';
   } finally {
